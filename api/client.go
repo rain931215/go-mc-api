@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/Tnze/go-mc/bot"
+	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
@@ -56,6 +57,7 @@ func NewClient() *Client {
 			client.Status.connected = true
 			var incomeErr error
 			for {
+				incomeErr = nil
 				p, err := client.Native.Conn().ReadPacket()
 				if err != nil {
 					incomeErr = err
@@ -70,6 +72,29 @@ func NewClient() *Client {
 						_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 					}
 					continue
+				} else if p.ID == data.DisconnectPlay {
+					var (
+						msg chat.Message
+					)
+					if msg.Decode(bytes.NewReader(p.Data)) == nil {
+						if client.Event.disconnectHandlers == nil || len(client.Event.disconnectHandlers) < 1 {
+							break
+						}
+						for _, v := range client.Event.disconnectHandlers {
+							if v == nil {
+								continue
+							}
+							pass, err := v(msg)
+							if err != nil {
+								incomeErr = err
+								fmt.Println("Disconnect event error" + err.Error())
+							}
+							if pass {
+								break
+							}
+						}
+					}
+					break
 				}
 				if err = client.handlePacket(&p); err != nil {
 					incomeErr = err
