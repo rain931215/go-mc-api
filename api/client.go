@@ -101,7 +101,7 @@ func (c *Client) JoinServer(ip string, port int) error {
 func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) error {
 	c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
 	if port < 0 || port > 65535 {
-		panic("try join server error:port is not in range 0~65535")
+		panic("try join server error: except port assigned")
 	}
 	return c.Native.JoinServerWithDialer(dialer, fmt.Sprintf("%s:%d", ip, port))
 }

@@ -2,6 +2,17 @@ package api
 
 import "sync"
 
+type Direction int
+
+const (
+	Bottom Direction = iota
+	Top
+	North
+	South
+	West
+	East
+)
+
 type Position struct {
 	Vec3d
 	Vec2f
