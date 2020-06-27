@@ -34,7 +34,7 @@ type Status struct {
 	connected bool
 }
 type AuthInfo struct {
-	ID, UUID, ClientToken, AccessToken string
+	ID, UUID, AccessToken string
 }
 
 // 生成新的客戶端
@@ -118,6 +118,7 @@ func (c *Client) JoinServer(ip string, port int) error {
 	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 30 * time.Second})
 }
 func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) error {
+	c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
 	if port < 0 || port > 65535 {
 		panic("try join server error:port is not in range 0~65535")
 	}
