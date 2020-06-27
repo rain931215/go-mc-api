@@ -1,0 +1,14 @@
+# github.com/Tnze/go-mc v1.15.2-0.20200623150932-0c01e5a14016
+## explicit
+github.com/Tnze/go-mc/bot
+github.com/Tnze/go-mc/bot/world
+github.com/Tnze/go-mc/bot/world/entity
+github.com/Tnze/go-mc/bot/world/entity/player
+github.com/Tnze/go-mc/chat
+github.com/Tnze/go-mc/data
+github.com/Tnze/go-mc/nbt
+github.com/Tnze/go-mc/net
+github.com/Tnze/go-mc/net/CFB8
+github.com/Tnze/go-mc/net/packet
+# github.com/google/uuid v1.1.1
+github.com/google/uuid
