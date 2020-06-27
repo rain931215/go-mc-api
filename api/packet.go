@@ -6,10 +6,11 @@ import (
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
 	pk "github.com/Tnze/go-mc/net/packet"
+	"github.com/rain931215/go-mc-api/api/world"
 )
 
 func (c *Client) handlePacket(p *pk.Packet) error {
-	if c.Event.chatHandlers != nil && len(c.Event.chatHandlers) >= 1 {
+	if c.Event.packetHandlers != nil && len(c.Event.packetHandlers) >= 1 {
 		for _, v := range c.Event.packetHandlers {
 			if v == nil {
 				continue
@@ -25,18 +26,62 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	}
 	switch p.ID {
 	case data.ChatMessageClientbound:
-		var (
-			msg chat.Message
-		)
-		if msg.Decode(bytes.NewReader(p.Data)) == nil {
-			if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 {
+		return c.handleChatPacket(p)
+	case data.Title:
+		return c.handleTitlePacket(p)
+	case data.BlockChange:
+		return c.handleBlockChangePacket(p)
+	case data.MultiBlockChange:
+		return c.handleMultiBlockChangePacket(p)
+	case data.PlayerPositionAndLookClientbound:
+		return c.handleMoveAndRotationPacket(p)
+	case data.ChunkData:
+		return c.handleLoadChunkPacket(p)
+	default:
+		return nil
+	}
+}
+func (c *Client) handleChatPacket(p *pk.Packet) error {
+	var (
+		msg chat.Message
+	)
+	if msg.Decode(bytes.NewReader(p.Data)) == nil {
+		if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 {
+			return nil
+		}
+		for _, v := range c.Event.chatHandlers {
+			if v == nil {
+				continue
+			}
+			pass, err := v(msg)
+			if err != nil {
+				return errors.New("Chat event error" + err.Error())
+			}
+			if pass {
 				break
 			}
-			for _, v := range c.Event.chatHandlers {
+		}
+	}
+	return nil
+}
+func (c *Client) handleTitlePacket(p *pk.Packet) error {
+	var (
+		r      = bytes.NewReader(p.Data)
+		action pk.VarInt
+		msg    chat.Message
+	)
+	if action.Decode(r) == nil && action == 0 {
+		if msg.Decode(r) == nil {
+			title := &chat.Message{Text: "[Title] "}
+			title.Append(msg)
+			if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 {
+				return nil
+			}
+			for _, v := range c.Event.titleHandlers {
 				if v == nil {
 					continue
 				}
-				pass, err := v(msg)
+				pass, err := v(*title)
 				if err != nil {
 					return errors.New("Chat event error" + err.Error())
 				}
@@ -45,37 +90,103 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 				}
 			}
 		}
-		break
-	case data.Title:
-		var (
-			r      = bytes.NewReader(p.Data)
-			action pk.VarInt
-			msg    chat.Message
-		)
-		if action.Decode(r) == nil && action == 0 {
-			if msg.Decode(r) == nil {
-				title := &chat.Message{Text: "[Title] "}
-				title.Append(msg)
-				if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 {
-					break
-				}
-				for _, v := range c.Event.titleHandlers {
-					if v == nil {
-						continue
-					}
-					pass, err := v(*title)
-					if err != nil {
-						return errors.New("Chat event error" + err.Error())
-					}
-					if pass {
-						break
+	}
+	return nil
+}
+func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
+	var (
+		pos pk.Position
+		id  pk.VarInt
+	)
+	if err := p.Scan(&pos, &id); err != nil {
+		return err
+	}
+	c.World.ChunkMapLock.Lock()
+	if chunk := c.World.Chunks[world.ChunkLoc{X: pos.X >> 4, Z: pos.Z >> 4}]; chunk != nil {
+		if v := chunk.Sections[pos.Y/16]; v != nil {
+			v.SetBlock(world.SectionOffset(pos.X&15, pos.Y&15, pos.Z&15), world.BlockStatus(id))
+		}
+	}
+	c.World.ChunkMapLock.Unlock()
+	return nil
+}
+func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
+	var (
+		r      = bytes.NewReader(p.Data)
+		cX, cY pk.Int
+		count  pk.VarInt
+	)
+
+	if err := cX.Decode(r); err != nil {
+		return err
+	}
+	if err := cY.Decode(r); err == nil {
+		return err
+	}
+	if err := count.Decode(r); err == nil {
+		return err
+	}
+	if chunk := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cY)}]; chunk != nil {
+		c.World.ChunkMapLock.Lock()
+		for i := 0; i < int(count); i++ {
+			if xz, err := r.ReadByte(); err == nil {
+				if y, err := r.ReadByte(); err == nil {
+					var blockID pk.VarInt
+					if blockID.Decode(r) == nil {
+						x, z := xz>>4, xz&0x0F
+						if v := chunk.Sections[y/16]; v != nil {
+							v.SetBlock(world.SectionOffset(int(x), int(y%16), int(z)), world.BlockStatus(blockID))
+						}
 					}
 				}
 			}
 		}
-		break
-	default:
-		break
+		c.World.ChunkMapLock.Unlock()
 	}
+	return nil
+}
+func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
+	var (
+		x, y, z    pk.Double
+		yaw, pitch pk.Float
+		flags      pk.Byte
+		TpID       pk.VarInt
+	)
+	if err := p.Scan(&x, &y, &z, &yaw, &pitch, &flags, &TpID); err != nil {
+		return err
+	}
+	c.SendPacket(pk.Marshal(
+		data.TeleportConfirm,
+		TpID,
+	))
+	if flags&0x01 == 0 {
+		c.SetX(float64(x))
+	} else {
+		c.SetX(c.GetX() + float64(x))
+	}
+	if flags&0x02 == 0 {
+		c.SetY(float64(y))
+	} else {
+		c.SetY(c.GetY() + float64(y))
+	}
+	if flags&0x04 == 0 {
+		c.SetZ(float64(z))
+	} else {
+		c.SetZ(c.GetZ() + float64(z))
+	}
+	if flags&0x08 == 0 {
+		c.SetYaw(float32(yaw))
+	} else {
+		c.SetYaw(c.GetYaw() + float32(yaw))
+	}
+	if flags&0x10 == 0 {
+		c.SetPitch(float32(pitch))
+	} else {
+		c.SetPitch(c.GetPitch() + float32(pitch))
+	}
+	return nil
+}
+func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
+	// TODO
 	return nil
 }

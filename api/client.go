@@ -15,25 +15,22 @@ const bufferPacketChannelSize int = 300
 
 // 改寫的客戶端結構
 type Client struct {
-	Native        *bot.Client
-	World         world.World
-	Inventory     *inventory
-	Auth          AuthInfo
+	Native    *bot.Client
+	World     *world.World
+	Inventory *inventory
+	Auth      *AuthInfo
+	*Position
 	packetChannel struct {
-		inChannel       chan *pk.Packet
-		outChannel      chan packetQueue
-		inStatusChannel chan error
+		inChannel, outChannel chan *pk.Packet
+		inStatusChannel       chan error
 	}
 	Event Events
 	Status
 }
-type packetQueue struct {
-	*pk.Packet
-	force bool
-}
 type Status struct {
 	connected bool
 }
+
 type AuthInfo struct {
 	ID, UUID, AccessToken string
 }
@@ -42,12 +39,13 @@ type AuthInfo struct {
 func NewClient() *Client {
 	client := new(Client)
 	client.Native = bot.NewClient()
-	client.World = world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
+	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
+	client.Position = new(Position)
 	client.Event = Events{}
-	client.Auth = AuthInfo{ID: "steve"}
+	client.Auth = &AuthInfo{ID: "steve"}
 	client.packetChannel.inChannel = make(chan *pk.Packet, bufferPacketChannelSize)
-	client.packetChannel.outChannel = make(chan packetQueue, bufferPacketChannelSize)
+	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
@@ -83,32 +81,13 @@ func NewClient() *Client {
 		}
 	}()
 	go func() {
-		//var waitSendList []packetQueue
 		for {
-			/*if len(waitSendList) != 0 && client.connected {
-				for k := 0; k < len(waitSendList); k++ {
-					if q := waitSendList[k]; q.Packet != nil {
-						if client.connected {
-							_ = client.Native.Conn().WritePacket(*q.Packet)
-							if len(waitSendList) > k+2 {
-								waitSendList = append(waitSendList[:k], waitSendList[k+1:]...)
-							} else {
-								waitSendList = waitSendList[:k]
-							}
-						}
-					}
-				}
-			}*/
 			p := <-client.packetChannel.outChannel
 			if client == nil {
 				return
 			}
-			if p.Packet != nil {
-				//if client.connected {
-				_ = client.Native.Conn().WritePacket(*p.Packet)
-				//} else if p.force {
-				//waitSendList = append(waitSendList, p)
-				//}
+			if p != nil {
+				_ = client.Native.Conn().WritePacket(*p)
 			}
 		}
 	}()
@@ -120,7 +99,7 @@ func (c *Client) JoinServer(ip string, port int) error {
 	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 30 * time.Second})
 }
 func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) error {
-	//c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
+	c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
 	if port < 0 || port > 65535 {
 		panic("try join server error:port is not in range 0~65535")
 	}
@@ -130,8 +109,8 @@ func (c *Client) HandleGame() error {
 	c.packetChannel.inStatusChannel <- nil
 	return <-c.packetChannel.inStatusChannel
 }
-func (c *Client) SendPacket(packet pk.Packet, force bool) {
+func (c *Client) SendPacket(packet pk.Packet) {
 	if c.packetChannel.outChannel != nil {
-		c.packetChannel.outChannel <- packetQueue{&packet, force}
+		c.packetChannel.outChannel <- &packet
 	}
 }
