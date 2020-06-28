@@ -55,7 +55,7 @@ func New(c *api.Client) *McfalloutCmd {
 }
 
 func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
-	var text string = msg.ClearString()
+	var text = msg.ClearString()
 	for id := 0; id < len(p.whiteList); id++ {
 		if strings.Index(text, "[收到私訊 "+p.whiteList[id]) == 0 {
 			text = strings.TrimPrefix(text, "[收到私訊 "+p.whiteList[id]+"] : ")
