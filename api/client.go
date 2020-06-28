@@ -139,3 +139,6 @@ func (c *Client) SendPacket(packet pk.Packet) {
 		c.packetChannel.outChannel <- &packet
 	}
 }
+func (c *Client) Connected() bool {
+	return c.Status.connected
+}

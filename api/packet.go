@@ -17,7 +17,7 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 			if v == nil {
 				continue
 			}
-			pass, err := v(*p)
+			pass, err := v(p)
 			if err != nil {
 				return errors.New("Packet event error" + err.Error())
 			}
@@ -48,9 +48,6 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	}
 }
 func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
-	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
-		return nil
-	}
 	var (
 		windowID pk.Byte
 		slot     pk.Short
@@ -58,6 +55,14 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	)
 	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
 		return err
+	}
+	if windowID == 0 {
+		c.Inventory.lock.Lock()
+		c.Inventory.itemStacks[slot] = ItemStack{id: uint32(slotData.ItemID), count: int(slotData.Count), nbt: nil} //TODO(Need improve nbt)
+		c.Inventory.lock.Unlock()
+	}
+	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
+		return nil
 	}
 	for _, v := range c.Event.setSlotHandlers {
 		if v == nil {

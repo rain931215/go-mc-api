@@ -7,7 +7,7 @@ import (
 )
 
 type Events struct {
-	packetHandlers     []func(p pk.Packet) (bool, error)
+	packetHandlers     []func(p *pk.Packet) (bool, error)
 	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) (bool, error)
 	chatHandlers       []func(msg chat.Message) (bool, error)
 	titleHandlers      []func(msg chat.Message) (bool, error)
@@ -22,8 +22,8 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) (bool, error)))
 	case func(id int8, slot int16, data entity.Slot) (bool, error):
 		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) (bool, error)))
-	case func(p pk.Packet) (bool, error):
-		e.packetHandlers = append(e.packetHandlers, handler.(func(p pk.Packet) (bool, error)))
+	case func(p *pk.Packet) (bool, error):
+		e.packetHandlers = append(e.packetHandlers, handler.(func(p *pk.Packet) (bool, error)))
 	case func(msg chat.Message) (bool, error):
 		switch handlerType {
 		case "chat":

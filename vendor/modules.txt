@@ -11,10 +11,16 @@ github.com/Tnze/go-mc/net
 github.com/Tnze/go-mc/net/CFB8
 github.com/Tnze/go-mc/net/packet
 github.com/Tnze/go-mc/yggdrasil
+# github.com/cornelk/hashmap v1.0.1
+## explicit
+github.com/cornelk/hashmap
+# github.com/dchest/siphash v1.1.0
+github.com/dchest/siphash
 # github.com/fsnotify/fsnotify v1.4.7
 ## explicit
 github.com/fsnotify/fsnotify
 # github.com/google/uuid v1.1.1
+## explicit
 github.com/google/uuid
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
