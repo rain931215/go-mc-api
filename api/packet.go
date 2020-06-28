@@ -41,6 +41,8 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleLoadChunkPacket(p)
 	case data.SetSlot:
 		return c.handleSetSlotPacket(p)
+	case data.TimeUpdate:
+		return c.handleTimeUpdatePacket(p)
 	default:
 		return nil
 	}
@@ -64,6 +66,28 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 		pass, err := v(int8(windowID), int16(slot), slotData)
 		if err != nil {
 			return errors.New("Set Slot event error" + err.Error())
+		}
+		if pass {
+			break
+		}
+	}
+	return nil
+}
+func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
+	if c.Event.timeUpdateHandlers == nil || len(c.Event.timeUpdateHandlers) < 1 {
+		return nil
+	}
+	var age, timeOfDay pk.Long
+	if err := p.Scan(&age, &timeOfDay); err != nil {
+		return err
+	}
+	for _, v := range c.Event.timeUpdateHandlers {
+		if v == nil {
+			continue
+		}
+		pass, err := v(int64(age), int64(timeOfDay))
+		if err != nil {
+			return errors.New("Time Update event error" + err.Error())
 		}
 		if pass {
 			break
