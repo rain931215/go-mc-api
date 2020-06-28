@@ -8,6 +8,7 @@ import (
 	"github.com/Tnze/go-mc/data"
 	"github.com/Tnze/go-mc/nbt"
 	pk "github.com/Tnze/go-mc/net/packet"
+	"github.com/google/uuid"
 	"github.com/rain931215/go-mc-api/api/world"
 )
 
@@ -43,6 +44,14 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleSetSlotPacket(p)
 	case data.TimeUpdate:
 		return c.handleTimeUpdatePacket(p)
+	case data.SpawnMob:
+		return c.handleSpawnMobPacket(p)
+	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
+		return c.handleEntityLocationUpdatePacket(p)
+	case data.EntityTeleport:
+		return c.handleEntityTeLePortPacket(p)
+	case data.DestroyEntities:
+		return c.handleRemoveEntityPacket(p)
 	default:
 		return nil
 	}
@@ -243,6 +252,92 @@ func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
 		c.SetPitch(float32(pitch))
 	} else {
 		c.SetPitch(c.GetPitch() + float32(pitch))
+	}
+	return nil
+}
+func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		eUUID   pk.UUID
+		eType   pk.VarInt
+		x, y, z pk.Double
+	)
+	if err := p.Scan(&eID, &eUUID, &eType, &x, &y, &z); err != nil {
+		return err
+	}
+	newEntity := new(BaseEntity)
+	newEntity.eID = int32(eID)
+	newEntity.eType = int32(eType)
+	newEntity.eUUID = uuid.UUID(eUUID)
+	newEntity.eX = float64(x)
+	newEntity.eY = float64(y)
+	newEntity.eZ = float64(z)
+	c.EntityList.hashMap.Set(int32(eID), newEntity)
+	return nil
+}
+func (c *Client) handleEntityLocationUpdatePacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		x, y, z pk.Short
+	)
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+		return err
+	}
+	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
+		if value, ok := element.(*BaseEntity); ok {
+			value.Lock()
+			value.eX = (float64(x)/128 + value.eX*32) / 32
+			value.eY = (float64(y)/128 + value.eY*32) / 32
+			value.eZ = (float64(z)/128 + value.eZ*32) / 32
+			value.Unlock()
+		}
+	}
+	return nil
+}
+func (c *Client) handleEntityTeLePortPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		x, y, z pk.Double
+	)
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+		return err
+	}
+	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
+		if value, ok := element.(*BaseEntity); ok {
+			value.Lock()
+			value.eX = float64(x)
+			value.eY = float64(y)
+			value.eZ = float64(z)
+			value.Unlock()
+		}
+	}
+	return nil
+}
+func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		r     = bytes.NewReader(p.Data)
+		count pk.VarInt
+	)
+	if err := count.Decode(r); err != nil {
+		return err
+	}
+	for i := 0; i < int(count); i++ {
+		var entityID pk.VarInt
+		if entityID.Decode(r) == nil {
+			c.EntityList.hashMap.Del(int32(entityID))
+		}
 	}
 	return nil
 }
