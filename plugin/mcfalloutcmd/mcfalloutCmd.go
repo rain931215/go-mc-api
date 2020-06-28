@@ -40,7 +40,7 @@ func New(c *api.Client) *McfalloutCmd {
 	file.WatchConfig()
 	err := file.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s", err))
+		panic(fmt.Errorf("Fatal error config file: %s ", err))
 	}
 	p.whiteList = file.GetStringSlice("admin")
 	//熱插拔
