@@ -3,8 +3,10 @@ package api
 import (
 	"bytes"
 	"errors"
+	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
+	"github.com/Tnze/go-mc/nbt"
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
 )
@@ -37,34 +39,66 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleMoveAndRotationPacket(p)
 	case data.ChunkData:
 		return c.handleLoadChunkPacket(p)
+	case data.SetSlot:
+		return c.handleSetSlotPacket(p)
 	default:
 		return nil
 	}
 }
+func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
+	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
+		return nil
+	}
+	var (
+		windowID pk.Byte
+		slot     pk.Short
+		slotData entity.Slot
+	)
+	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
+		return err
+	}
+	for _, v := range c.Event.setSlotHandlers {
+		if v == nil {
+			continue
+		}
+		pass, err := v(int8(windowID), int16(slot), slotData)
+		if err != nil {
+			return errors.New("Set Slot event error" + err.Error())
+		}
+		if pass {
+			break
+		}
+	}
+	return nil
+}
 func (c *Client) handleChatPacket(p *pk.Packet) error {
+	if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 {
+		return nil
+	}
 	var (
 		msg chat.Message
 	)
-	if msg.Decode(bytes.NewReader(p.Data)) == nil {
-		if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 {
-			return nil
+	if err := msg.Decode(bytes.NewReader(p.Data)); err != nil {
+		return err
+	}
+	for _, v := range c.Event.chatHandlers {
+		if v == nil {
+			continue
 		}
-		for _, v := range c.Event.chatHandlers {
-			if v == nil {
-				continue
-			}
-			pass, err := v(msg)
-			if err != nil {
-				return errors.New("Chat event error" + err.Error())
-			}
-			if pass {
-				break
-			}
+		pass, err := v(msg)
+		if err != nil {
+			return errors.New("Chat event error" + err.Error())
+		}
+		if pass {
+			break
 		}
 	}
 	return nil
 }
 func (c *Client) handleTitlePacket(p *pk.Packet) error {
+	if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 {
+		return nil
+	}
 	var (
 		r      = bytes.NewReader(p.Data)
 		action pk.VarInt
@@ -74,16 +108,13 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 		if msg.Decode(r) == nil {
 			title := &chat.Message{Text: "[Title] "}
 			title.Append(msg)
-			if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 {
-				return nil
-			}
 			for _, v := range c.Event.titleHandlers {
 				if v == nil {
 					continue
 				}
 				pass, err := v(*title)
 				if err != nil {
-					return errors.New("Chat event error" + err.Error())
+					return errors.New("Title Message event error" + err.Error())
 				}
 				if pass {
 					break

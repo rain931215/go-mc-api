@@ -1,12 +1,14 @@
 package api
 
 import (
+	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	pk "github.com/Tnze/go-mc/net/packet"
 )
 
 type Events struct {
 	packetHandlers     []func(p pk.Packet) (bool, error)
+	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) (bool, error)
 	chatHandlers       []func(msg chat.Message) (bool, error)
 	titleHandlers      []func(msg chat.Message) (bool, error)
 	disconnectHandlers []func(msg chat.Message) (bool, error)
@@ -15,6 +17,8 @@ type Events struct {
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 	switch handler.(type) {
+	case func(id int8, slot int16, data entity.Slot) (bool, error):
+		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) (bool, error)))
 	case func(p pk.Packet) (bool, error):
 		e.packetHandlers = append(e.packetHandlers, handler.(func(p pk.Packet) (bool, error)))
 	case func(msg chat.Message) (bool, error):
