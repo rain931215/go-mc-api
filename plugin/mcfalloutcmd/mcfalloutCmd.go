@@ -19,46 +19,50 @@ type Command struct {
 	method Func
 }
 
-var (
+//McfalloutCmd _
+type McfalloutCmd struct {
 	client    *api.Client
 	whiteList []string
 	cmdList   []*Command
-)
+}
 
-// Load Plugin
-func Load(c *api.Client) {
-	client = c
-	c.Event.AddEventHandler(main, "chat")
+// New _
+func New(c *api.Client) *McfalloutCmd {
+	p := new(McfalloutCmd)
+	p.client = c
+	c.Event.AddEventHandler(p.main, "chat")
 
+	file := viper.New()
 	//Load whiteList
-	viper.SetConfigName("whiteList")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("./plugin/mcfalloutCmd")
-	viper.WatchConfig()
-	err := viper.ReadInConfig()
+	file.SetConfigName("whiteList")
+	file.SetConfigType("yaml")
+	file.AddConfigPath("./plugin/mcfalloutcmd")
+	file.WatchConfig()
+	err := file.ReadInConfig()
 	if err != nil {
 		panic(fmt.Errorf("Fatal error config file: %s", err))
 	}
-	whiteList = viper.GetStringSlice("admin")
+	p.whiteList = file.GetStringSlice("admin")
 	//熱插拔
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		whiteList = viper.GetStringSlice("admin")
+	file.OnConfigChange(func(e fsnotify.Event) {
+		p.whiteList = file.GetStringSlice("admin")
 		fmt.Println("White List Change")
 	})
 	//Load defaultCommand
-	AddCmd("say", say)
-	AddCmd("addadmin", addAdmin)
+	p.AddCmd("say", say)
+	p.AddCmd("addadmin", addAdmin)
+	return p
 }
 
-func main(msg chat.Message) (bool, error) {
+func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 	var text string = msg.ClearString()
-	for id := 0; id < len(whiteList); id++ {
-		if strings.Index(text, "[收到私訊 "+whiteList[id]) == 0 {
-			text = strings.TrimPrefix(text, "[收到私訊 "+whiteList[id]+"] : ")
-			for i := 0; i < len(cmdList); i++ {
-				if strings.Index(text, cmdList[i].name) == 0 {
-					text = strings.TrimPrefix(text, cmdList[i].name+" ")
-					cmdList[i].method(client, text)
+	for id := 0; id < len(p.whiteList); id++ {
+		if strings.Index(text, "[收到私訊 "+p.whiteList[id]) == 0 {
+			text = strings.TrimPrefix(text, "[收到私訊 "+p.whiteList[id]+"] : ")
+			for i := 0; i < len(p.cmdList); i++ {
+				if strings.Index(text, p.cmdList[i].name) == 0 {
+					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
+					p.cmdList[i].method(p.client, text)
 					return false, nil
 				}
 			}
@@ -69,9 +73,9 @@ func main(msg chat.Message) (bool, error) {
 }
 
 // AddCmd _
-func AddCmd(name string, command Func) {
+func (p *McfalloutCmd) AddCmd(name string, command Func) {
 	newCommand := new(Command)
 	newCommand.name = name
 	newCommand.method = command
-	cmdList = append(cmdList, newCommand)
+	p.cmdList = append(p.cmdList, newCommand)
 }

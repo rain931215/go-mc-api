@@ -6,9 +6,14 @@ import (
 )
 
 func addAdmin(c *api.Client, Text string) {
-	viper.Set("admin", append(whiteList, Text))
-	viper.WriteConfig()
+	file := viper.New()
+	file.SetConfigName("whiteList")
+	file.SetConfigType("yaml")
+	file.AddConfigPath("./plugin/mcfalloutcmd")
+	file.Set("admin", append(file.GetStringSlice("admin"), Text))
+	file.WriteConfig()
 }
+
 func say(c *api.Client, Text string) {
 	c.Chat(Text)
 }
