@@ -11,7 +11,7 @@ import (
 )
 
 //Func is the type of command's method
-type Func = func(c *api.Client, Text string)
+type Func = func(c *api.Client, Sender string, Text string, Args []string)
 
 //Command is contained command's name and command's method
 type Command struct {
@@ -62,7 +62,8 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 			for i := 0; i < len(p.cmdList); i++ {
 				if strings.Index(text, p.cmdList[i].name) == 0 {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
-					p.cmdList[i].method(p.client, text)
+					args := strings.Split(text, " ")
+					p.cmdList[i].method(p.client, p.cmdList[i].name, text, args)
 					return false, nil
 				}
 			}
