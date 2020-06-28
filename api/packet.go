@@ -65,7 +65,7 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
 		return err
 	}
-	if windowID == 0 {
+	if c.Inventory != nil && windowID == 0 {
 		c.Inventory.lock.Lock()
 		c.Inventory.itemStacks[slot] = ItemStack{id: uint32(slotData.ItemID), count: int(slotData.Count), nbt: nil} //TODO(Need improve nbt)
 		c.Inventory.lock.Unlock()
@@ -163,6 +163,9 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	var (
 		pos pk.Position
 		id  pk.VarInt
@@ -180,6 +183,9 @@ func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	var (
 		r      = bytes.NewReader(p.Data)
 		cX, cY pk.Int
@@ -342,6 +348,9 @@ func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	// TODO
 	return nil
 }
