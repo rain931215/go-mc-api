@@ -30,19 +30,25 @@ func (inv *inventory) GetSlotItemStack(slot int) (item *ItemStack) {
 	inv.lock.Unlock()
 	return
 }
-func (stack *ItemStack) getID() uint32 {
+func (stack *ItemStack) GetID() uint32 {
 	if stack == nil {
 		return 0
 	}
 	return stack.id
 }
-func (stack *ItemStack) getCount() int {
+func (stack *ItemStack) SetID(id uint32) {
+	if stack == nil {
+		return
+	}
+	stack.id = id
+}
+func (stack *ItemStack) GetCount() int {
 	if stack == nil {
 		return 0
 	}
 	return stack.count
 }
-func (stack *ItemStack) getNBT() map[string]interface{} {
+func (stack *ItemStack) GetNBT() map[string]interface{} {
 	if stack == nil {
 		return map[string]interface{}{}
 	}

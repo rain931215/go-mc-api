@@ -7,20 +7,23 @@ import (
 )
 
 type Events struct {
-	packetHandlers     []func(p pk.Packet) (bool, error)
+	packetHandlers     []func(p *pk.Packet) (bool, error)
 	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) (bool, error)
 	chatHandlers       []func(msg chat.Message) (bool, error)
 	titleHandlers      []func(msg chat.Message) (bool, error)
 	disconnectHandlers []func(msg chat.Message) (bool, error)
-	dieHandlers        []func() error
+	timeUpdateHandlers []func(age, timeOfDay int64) (bool, error)
+	dieHandlers        []func() (bool, error)
 }
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 	switch handler.(type) {
+	case func(age, timeOfDay int64) (bool, error):
+		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) (bool, error)))
 	case func(id int8, slot int16, data entity.Slot) (bool, error):
 		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) (bool, error)))
-	case func(p pk.Packet) (bool, error):
-		e.packetHandlers = append(e.packetHandlers, handler.(func(p pk.Packet) (bool, error)))
+	case func(p *pk.Packet) (bool, error):
+		e.packetHandlers = append(e.packetHandlers, handler.(func(p *pk.Packet) (bool, error)))
 	case func(msg chat.Message) (bool, error):
 		switch handlerType {
 		case "chat":
@@ -36,10 +39,10 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 			panic("Unknown handler on type [func(msg chat.Message) error]")
 		}
 		break
-	case func() error:
+	case func() (bool, error):
 		switch handlerType {
 		case "die":
-			e.dieHandlers = append(e.dieHandlers, handler.(func() error))
+			e.dieHandlers = append(e.dieHandlers, handler.(func() (bool, error)))
 			break
 		default:
 			panic("Unknown handler on type [func() error]")

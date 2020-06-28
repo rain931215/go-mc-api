@@ -40,7 +40,7 @@ func New(c *api.Client) *McfalloutCmd {
 	file.WatchConfig()
 	err := file.ReadInConfig()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s", err))
+		panic(fmt.Errorf("Fatal error config file: %s ", err))
 	}
 	p.whiteList = file.GetStringSlice("admin")
 	//熱插拔
@@ -55,7 +55,7 @@ func New(c *api.Client) *McfalloutCmd {
 }
 
 func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
-	var text string = msg.ClearString()
+	var text = msg.ClearString()
 	for id := 0; id < len(p.whiteList); id++ {
 		if strings.Index(text, "[收到私訊 "+p.whiteList[id]) == 0 {
 			text = strings.TrimPrefix(text, "[收到私訊 "+p.whiteList[id]+"] : ")

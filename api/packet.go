@@ -8,6 +8,7 @@ import (
 	"github.com/Tnze/go-mc/data"
 	"github.com/Tnze/go-mc/nbt"
 	pk "github.com/Tnze/go-mc/net/packet"
+	"github.com/google/uuid"
 	"github.com/rain931215/go-mc-api/api/world"
 )
 
@@ -17,7 +18,7 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 			if v == nil {
 				continue
 			}
-			pass, err := v(*p)
+			pass, err := v(p)
 			if err != nil {
 				return errors.New("Packet event error" + err.Error())
 			}
@@ -41,14 +42,21 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleLoadChunkPacket(p)
 	case data.SetSlot:
 		return c.handleSetSlotPacket(p)
+	case data.TimeUpdate:
+		return c.handleTimeUpdatePacket(p)
+	case data.SpawnMob:
+		return c.handleSpawnMobPacket(p)
+	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
+		return c.handleEntityLocationUpdatePacket(p)
+	case data.EntityTeleport:
+		return c.handleEntityTeLePortPacket(p)
+	case data.DestroyEntities:
+		return c.handleRemoveEntityPacket(p)
 	default:
 		return nil
 	}
 }
 func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
-	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
-		return nil
-	}
 	var (
 		windowID pk.Byte
 		slot     pk.Short
@@ -57,6 +65,14 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
 		return err
 	}
+	if c.Inventory != nil && windowID == 0 {
+		c.Inventory.lock.Lock()
+		c.Inventory.itemStacks[slot] = ItemStack{id: uint32(slotData.ItemID), count: int(slotData.Count), nbt: nil} //TODO(Need improve nbt)
+		c.Inventory.lock.Unlock()
+	}
+	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
+		return nil
+	}
 	for _, v := range c.Event.setSlotHandlers {
 		if v == nil {
 			continue
@@ -64,6 +80,28 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 		pass, err := v(int8(windowID), int16(slot), slotData)
 		if err != nil {
 			return errors.New("Set Slot event error" + err.Error())
+		}
+		if pass {
+			break
+		}
+	}
+	return nil
+}
+func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
+	if c.Event.timeUpdateHandlers == nil || len(c.Event.timeUpdateHandlers) < 1 {
+		return nil
+	}
+	var age, timeOfDay pk.Long
+	if err := p.Scan(&age, &timeOfDay); err != nil {
+		return err
+	}
+	for _, v := range c.Event.timeUpdateHandlers {
+		if v == nil {
+			continue
+		}
+		pass, err := v(int64(age), int64(timeOfDay))
+		if err != nil {
+			return errors.New("Time Update event error" + err.Error())
 		}
 		if pass {
 			break
@@ -125,6 +163,9 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	var (
 		pos pk.Position
 		id  pk.VarInt
@@ -142,6 +183,9 @@ func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	var (
 		r      = bytes.NewReader(p.Data)
 		cX, cY pk.Int
@@ -217,7 +261,96 @@ func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
 	}
 	return nil
 }
+func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		eUUID   pk.UUID
+		eType   pk.VarInt
+		x, y, z pk.Double
+	)
+	if err := p.Scan(&eID, &eUUID, &eType, &x, &y, &z); err != nil {
+		return err
+	}
+	newEntity := new(BaseEntity)
+	newEntity.eID = int32(eID)
+	newEntity.eType = int32(eType)
+	newEntity.eUUID = uuid.UUID(eUUID)
+	newEntity.eX = float64(x)
+	newEntity.eY = float64(y)
+	newEntity.eZ = float64(z)
+	c.EntityList.hashMap.Set(int32(eID), newEntity)
+	return nil
+}
+func (c *Client) handleEntityLocationUpdatePacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		x, y, z pk.Short
+	)
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+		return err
+	}
+	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
+		if value, ok := element.(*BaseEntity); ok {
+			value.Lock()
+			value.eX = (float64(x)/128 + value.eX*32) / 32
+			value.eY = (float64(y)/128 + value.eY*32) / 32
+			value.eZ = (float64(z)/128 + value.eZ*32) / 32
+			value.Unlock()
+		}
+	}
+	return nil
+}
+func (c *Client) handleEntityTeLePortPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		x, y, z pk.Double
+	)
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+		return err
+	}
+	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
+		if value, ok := element.(*BaseEntity); ok {
+			value.Lock()
+			value.eX = float64(x)
+			value.eY = float64(y)
+			value.eZ = float64(z)
+			value.Unlock()
+		}
+	}
+	return nil
+}
+func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		r     = bytes.NewReader(p.Data)
+		count pk.VarInt
+	)
+	if err := count.Decode(r); err != nil {
+		return err
+	}
+	for i := 0; i < int(count); i++ {
+		var entityID pk.VarInt
+		if entityID.Decode(r) == nil {
+			c.EntityList.hashMap.Del(int32(entityID))
+		}
+	}
+	return nil
+}
 func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
 	// TODO
 	return nil
 }

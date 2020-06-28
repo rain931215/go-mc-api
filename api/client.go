@@ -16,10 +16,11 @@ const bufferPacketChannelSize int = 300
 
 // 改寫的客戶端結構
 type Client struct {
-	Native    *bot.Client
-	World     *world.World
-	Inventory *inventory
-	Auth      *AuthInfo
+	Native     *bot.Client
+	World      *world.World
+	Inventory  *inventory
+	Auth       *AuthInfo
+	EntityList *EntityList
 	*Position
 	packetChannel struct {
 		inChannel, outChannel chan *pk.Packet
@@ -45,6 +46,7 @@ func NewClient() *Client {
 	client.Position = new(Position)
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
+	client.EntityList = NewEntityList()
 	client.packetChannel.inChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
@@ -138,4 +140,7 @@ func (c *Client) SendPacket(packet pk.Packet) {
 	if c.packetChannel.outChannel != nil {
 		c.packetChannel.outChannel <- &packet
 	}
+}
+func (c *Client) Connected() bool {
+	return c.Status.connected
 }
