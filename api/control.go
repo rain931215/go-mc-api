@@ -144,3 +144,6 @@ func (c *Client) ClickWindow(id uint8, slot int16, button int8, mode int32) {
 		pk.Byte(0),
 	))
 }
+func (c *Client) ReSpawn() {
+	c.SendPacket(pk.Marshal(data.ClientStatus, pk.VarInt(0)))
+}
