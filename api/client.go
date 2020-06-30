@@ -23,8 +23,8 @@ type Client struct {
 	EntityList *EntityList
 	*Position
 	packetChannel struct {
-		inChannel, outChannel chan *pk.Packet
-		inStatusChannel       chan error
+		keepAliveChannel, inChannel, outChannel chan *pk.Packet
+		inStatusChannel                         chan error
 	}
 	Event Events
 	Status
@@ -47,14 +47,12 @@ func NewClient() *Client {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
+	client.packetChannel.keepAliveChannel = make(chan *pk.Packet, 5)
 	client.packetChannel.inChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
-			if client == nil {
-				return
-			}
 			<-client.packetChannel.inStatusChannel
 			client.Status.connected = true
 			var incomeErr error
@@ -69,9 +67,11 @@ func NewClient() *Client {
 					var ID pk.Long
 					if err := ID.Decode(bytes.NewReader(p.Data)); err != nil {
 						incomeErr = err
-						continue
+						break
 					} else {
-						_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+						packet := pk.Marshal(data.KeepAliveServerbound, ID)
+						client.packetChannel.keepAliveChannel <- &packet
+						client.SendPacket(packet)
 					}
 					continue
 				} else if p.ID == data.DisconnectPlay {
@@ -109,12 +109,19 @@ func NewClient() *Client {
 	}()
 	go func() {
 		for {
-			p := <-client.packetChannel.outChannel
-			if client == nil {
-				return
-			}
-			if p != nil {
-				_ = client.Native.Conn().WritePacket(*p)
+			select {
+			case val := <-client.packetChannel.keepAliveChannel:
+				if val != nil {
+					_ = client.Native.Conn().WritePacket(*val)
+					continue
+				}
+				break
+			default:
+				p := <-client.packetChannel.outChannel
+				if p != nil {
+					_ = client.Native.Conn().WritePacket(*p)
+				}
+				break
 			}
 		}
 	}()
