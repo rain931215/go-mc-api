@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/Tnze/go-mc/bot"
@@ -23,8 +24,8 @@ type Client struct {
 	EntityList *EntityList
 	*Position
 	packetChannel struct {
-		inChannel, outChannel chan *pk.Packet
-		inStatusChannel       chan error
+		outChannel      chan pk.Packet
+		inStatusChannel chan error
 	}
 	Event Events
 	Status
@@ -38,8 +39,8 @@ type AuthInfo struct {
 }
 
 // 生成新的客戶端
-func NewClient() *Client {
-	client := new(Client)
+func NewClient() (client *Client) {
+	client = new(Client)
 	client.Native = bot.NewClient()
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
@@ -47,23 +48,25 @@ func NewClient() *Client {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetChannel.inChannel = make(chan *pk.Packet, bufferPacketChannelSize)
-	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
+	client.packetChannel.outChannel = make(chan pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
-			if p := <-client.packetChannel.outChannel; p != nil {
-				if client.Connected() {
-					_ = client.Native.Conn().WritePacket(*p)
-				}
+			p := <-client.packetChannel.outChannel
+			if client.connected {
+				_ = client.Native.Conn().WritePacket(p)
 			}
 		}
 	}()
 	go func() {
+		var (
+			incomeErr    error
+			r            = &bytes.Reader{}
+			buffedReader = bufio.NewReader(r)
+		)
 		for {
 			<-client.packetChannel.inStatusChannel
-			client.Status.connected = true
-			var incomeErr error
+			client.Status.connected = true // 設定連線狀態
 			for {
 				incomeErr = nil
 				p, err := client.Native.Conn().ReadPacket()
@@ -71,21 +74,13 @@ func NewClient() *Client {
 					incomeErr = err
 					break
 				}
+				r.Reset(p.Data)
+				twoBreak := false
 				switch p.ID {
-				case data.KeepAliveClientbound:
-					var ID pk.Long
-					if err := ID.Decode(bytes.NewReader(p.Data)); err != nil {
-						incomeErr = err
-						break
-					} else {
-						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
-					}
-					break
-				case data.DisconnectPlay:
-					var (
-						msg chat.Message
-					)
-					if msg.Decode(bytes.NewReader(p.Data)) == nil {
+				case 0x1b: // 0x1b = Disconnect (play) https://wiki.vg/Protocol#Disconnect_.28play.29
+					var msg chat.Message
+					if msg.Decode(buffedReader) == nil {
+						//TODO (Async Events)
 						if client.Event.disconnectHandlers == nil || len(client.Event.disconnectHandlers) < 1 {
 							break
 						}
@@ -103,23 +98,30 @@ func NewClient() *Client {
 							}
 						}
 					}
+					twoBreak = true
+					break
+				case data.KeepAliveClientbound:
+					var ID pk.Long
+					if err := ID.Decode(buffedReader); err == nil {
+						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
+					}
 					break
 				default:
-					err := client.handlePacket(&p)
-					if err != nil {
+					if err := client.handlePacket(&p); err != nil {
 						incomeErr = err
+						twoBreak = true
 					}
 					break
 				}
-				if p.ID == data.DisconnectPlay || incomeErr != nil {
+				if twoBreak {
 					break
 				}
 			}
-			client.Status.connected = false
+			client.Status.connected = false // 設定連線狀態
 			client.packetChannel.inStatusChannel <- incomeErr
 		}
 	}()
-	return client
+	return
 }
 
 // 加入伺服器
@@ -138,9 +140,10 @@ func (c *Client) HandleGame() error {
 	return <-c.packetChannel.inStatusChannel
 }
 func (c *Client) SendPacket(packet pk.Packet) {
-	if c.packetChannel.outChannel != nil {
-		c.packetChannel.outChannel <- &packet
+	if c.packetChannel.outChannel == nil {
+		return
 	}
+	c.packetChannel.outChannel <- packet
 }
 func (c *Client) Connected() bool {
 	return c.Status.connected

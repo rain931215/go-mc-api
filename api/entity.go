@@ -3,7 +3,6 @@ package api
 import (
 	"github.com/cornelk/hashmap"
 	"github.com/google/uuid"
-	"sync"
 )
 
 type EntityList struct {
@@ -17,7 +16,6 @@ type BaseEntity struct {
 	eX, eY, eZ float64
 	//eYaw, ePitch                       float32
 	//eVelocityX, eVelocityY, eVelocityZ int16
-	sync.Mutex
 }
 
 func NewEntityList() (list *EntityList) {
@@ -37,7 +35,7 @@ func (list *EntityList) GetEntityByID(entityID int32) *BaseEntity {
 	return nil
 }
 func (list *EntityList) GetAllEntities() []*BaseEntity {
-	var entitiesList []*BaseEntity
+	entitiesList := make([]*BaseEntity, list.hashMap.Len())
 	for entity := range list.hashMap.Iter() {
 		if value, ok := entity.Value.(*BaseEntity); ok {
 			entitiesList = append(entitiesList, value)
@@ -52,63 +50,49 @@ func (entity *BaseEntity) GetID() (id int32) {
 	if entity == nil {
 		return 0
 	}
-	entity.Lock()
 	id = entity.eID
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetType() (eType int32) {
 	if entity == nil {
 		return 0
 	}
-	entity.Lock()
 	eType = entity.eType
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetUUID() (id uuid.UUID) {
 	if entity == nil {
 		return uuid.UUID{}
 	}
-	entity.Lock()
 	id = entity.eUUID
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetX() (x float64) {
 	if entity == nil {
 		return 0
 	}
-	entity.Lock()
 	x = entity.eX
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetY() (y float64) {
 	if entity == nil {
 		return 0
 	}
-	entity.Lock()
 	y = entity.eY
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetZ() (z float64) {
 	if entity == nil {
 		return 0
 	}
-	entity.Lock()
 	z = entity.eZ
-	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetSquaredDistanceToClient(c *Client) float64 {
-	entity.Lock()
 	c.Position.Lock()
 	diffX := entity.eX - c.x
 	diffY := entity.eY - c.y
 	diffZ := entity.eZ - c.z
 	c.Position.Unlock()
-	entity.Unlock()
 	return diffX*diffX + diffY*diffY + diffZ*diffZ
 }
