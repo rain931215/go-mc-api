@@ -53,7 +53,9 @@ func NewClient() *Client {
 	go func() {
 		for {
 			if p := <-client.packetChannel.outChannel; p != nil {
-				_ = client.Native.Conn().WritePacket(*p)
+				if client.Connected() {
+					_ = client.Native.Conn().WritePacket(*p)
+				}
 			}
 		}
 	}()
