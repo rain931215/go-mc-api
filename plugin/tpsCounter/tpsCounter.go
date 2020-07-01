@@ -1,7 +1,6 @@
 package tpscounter
 
 import (
-	"log"
 	"time"
 
 	"github.com/rain931215/go-mc-api/api"
@@ -39,7 +38,5 @@ func (p *TpsCounter) GetTps() float64 {
 
 //Sleep _
 func (p *TpsCounter) Sleep(ms int) {
-	t := time.Now().UnixNano()
 	time.Sleep(time.Millisecond * time.Duration(float64(ms)*(20/(p.GetTps()))))
-	log.Println(time.Now().UnixNano() - t)
 }
