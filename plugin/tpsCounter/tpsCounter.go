@@ -1,6 +1,7 @@
 package tpscounter
 
 import (
+	"log"
 	"time"
 
 	"github.com/rain931215/go-mc-api/api"
@@ -34,4 +35,11 @@ func (p *TpsCounter) onTimeUpdate(age, timeOfDay int64) (bool, error) {
 //GetTps _
 func (p *TpsCounter) GetTps() float64 {
 	return float64(int64((p.packetCount * 20))) / float64((time.Now().Unix() - p.markRealTime))
+}
+
+//Sleep _
+func (p *TpsCounter) Sleep(ms int) {
+	t := time.Now().UnixNano()
+	time.Sleep(time.Millisecond * time.Duration(float64(ms)*(20/(p.GetTps()))))
+	log.Println(time.Now().UnixNano() - t)
 }
