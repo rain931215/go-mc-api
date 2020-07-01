@@ -55,7 +55,6 @@ func NewClient() *Client {
 			if p := <-client.packetChannel.outChannel; p != nil {
 				_ = client.Native.Conn().WritePacket(*p)
 			}
-			break
 		}
 	}()
 	go func() {
@@ -123,7 +122,7 @@ func NewClient() *Client {
 
 // 加入伺服器
 func (c *Client) JoinServer(ip string, port int) error {
-	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 180 * time.Second})
+	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 120 * time.Second})
 }
 func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) error {
 	c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
