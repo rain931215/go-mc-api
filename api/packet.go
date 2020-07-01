@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"github.com/Tnze/go-mc/bot/world/entity"
@@ -13,6 +14,10 @@ import (
 )
 
 func (c *Client) handlePacket(p *pk.Packet) error {
+	if p == nil {
+		return nil
+	}
+	//TODO (Async Events)
 	if c.Event.packetHandlers != nil && len(c.Event.packetHandlers) >= 1 {
 		for _, v := range c.Event.packetHandlers {
 			if v == nil {
@@ -62,15 +67,15 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 		slot     pk.Short
 		slotData entity.Slot
 	)
-	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
+	if err := ScanFields(p, &windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
 		return err
 	}
-	if c.Inventory != nil && windowID == 0 {
+	if c.Inventory != nil && windowID == 0 { // 更新背包
 		c.Inventory.lock.Lock()
 		c.Inventory.itemStacks[slot] = ItemStack{id: uint32(slotData.ItemID), count: int(slotData.Count), nbt: nil} //TODO(Need improve nbt)
 		c.Inventory.lock.Unlock()
 	}
-	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 {
+	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	for _, v := range c.Event.setSlotHandlers {
@@ -88,11 +93,11 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
-	if c.Event.timeUpdateHandlers == nil || len(c.Event.timeUpdateHandlers) < 1 {
+	if c.Event.timeUpdateHandlers == nil || len(c.Event.timeUpdateHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	var age, timeOfDay pk.Long
-	if err := p.Scan(&age, &timeOfDay); err != nil {
+	if err := ScanFields(p, &age, &timeOfDay); err != nil {
 		return err
 	}
 	for _, v := range c.Event.timeUpdateHandlers {
@@ -110,53 +115,47 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleChatPacket(p *pk.Packet) error {
-	if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 {
+	if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
-	var (
-		msg chat.Message
-	)
-	if err := msg.Decode(bytes.NewReader(p.Data)); err != nil {
-		return err
-	}
-	for _, v := range c.Event.chatHandlers {
-		if v == nil {
-			continue
-		}
-		pass, err := v(msg)
-		if err != nil {
-			return errors.New("Chat event error" + err.Error())
-		}
-		if pass {
-			break
+	var msg chat.Message
+	if err := ScanFields(p, &msg); err == nil {
+		for _, v := range c.Event.chatHandlers {
+			if v == nil {
+				continue
+			}
+			pass, err := v(msg)
+			if err != nil {
+				return errors.New("Chat event error" + err.Error())
+			}
+			if pass {
+				break
+			}
 		}
 	}
 	return nil
 }
 func (c *Client) handleTitlePacket(p *pk.Packet) error {
-	if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 {
+	if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	var (
-		r      = bytes.NewReader(p.Data)
 		action pk.VarInt
 		msg    chat.Message
 	)
-	if action.Decode(r) == nil && action == 0 {
-		if msg.Decode(r) == nil {
-			title := &chat.Message{Text: "[Title] "}
-			title.Append(msg)
-			for _, v := range c.Event.titleHandlers {
-				if v == nil {
-					continue
-				}
-				pass, err := v(*title)
-				if err != nil {
-					return errors.New("Title Message event error" + err.Error())
-				}
-				if pass {
-					break
-				}
+	if ScanFields(p, &action, &msg) == nil && action == 0 {
+		title := &chat.Message{Text: "[Title] "}
+		title.Append(msg)
+		for _, v := range c.Event.titleHandlers {
+			if v == nil {
+				continue
+			}
+			pass, err := v(*title)
+			if err != nil {
+				return errors.New("Title Message event error" + err.Error())
+			}
+			if pass {
+				break
 			}
 		}
 	}
@@ -170,7 +169,7 @@ func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
 		pos pk.Position
 		id  pk.VarInt
 	)
-	if err := p.Scan(&pos, &id); err != nil {
+	if err := ScanFields(p, &pos, &id); err != nil {
 		return err
 	}
 	c.World.ChunkMapLock.Lock()
@@ -187,11 +186,10 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r      = bytes.NewReader(p.Data)
+		r      = bufio.NewReader(bytes.NewReader(p.Data))
 		cX, cY pk.Int
 		count  pk.VarInt
 	)
-
 	if err := cX.Decode(r); err != nil {
 		return err
 	}
@@ -201,8 +199,8 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 	if err := count.Decode(r); err == nil {
 		return err
 	}
+	c.World.ChunkMapLock.Lock()
 	if chunk := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cY)}]; chunk != nil {
-		c.World.ChunkMapLock.Lock()
 		for i := 0; i < int(count); i++ {
 			if xz, err := r.ReadByte(); err == nil {
 				if y, err := r.ReadByte(); err == nil {
@@ -216,8 +214,8 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 				}
 			}
 		}
-		c.World.ChunkMapLock.Unlock()
 	}
+	c.World.ChunkMapLock.Unlock()
 	return nil
 }
 func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
@@ -227,7 +225,7 @@ func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
 		flags      pk.Byte
 		TpID       pk.VarInt
 	)
-	if err := p.Scan(&x, &y, &z, &yaw, &pitch, &flags, &TpID); err != nil {
+	if err := ScanFields(p, &x, &y, &z, &yaw, &pitch, &flags, &TpID); err != nil {
 		return err
 	}
 	c.SendPacket(pk.Marshal(
@@ -271,7 +269,7 @@ func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {
 		eType   pk.VarInt
 		x, y, z pk.Double
 	)
-	if err := p.Scan(&eID, &eUUID, &eType, &x, &y, &z); err != nil {
+	if err := ScanFields(p, &eID, &eUUID, &eType, &x, &y, &z); err != nil {
 		return err
 	}
 	newEntity := new(BaseEntity)
@@ -292,16 +290,14 @@ func (c *Client) handleEntityLocationUpdatePacket(p *pk.Packet) error {
 		eID     pk.VarInt
 		x, y, z pk.Short
 	)
-	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+	if err := ScanFields(p, &eID, &x, &y, &z); err != nil {
 		return err
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
 		if value, ok := element.(*BaseEntity); ok {
-			value.Lock()
 			value.eX = (float64(x)/128 + value.eX*32) / 32
 			value.eY = (float64(y)/128 + value.eY*32) / 32
 			value.eZ = (float64(z)/128 + value.eZ*32) / 32
-			value.Unlock()
 		}
 	}
 	return nil
@@ -314,16 +310,14 @@ func (c *Client) handleEntityTeLePortPacket(p *pk.Packet) error {
 		eID     pk.VarInt
 		x, y, z pk.Double
 	)
-	if err := p.Scan(&eID, &x, &y, &z); err != nil {
+	if err := ScanFields(p, &eID, &x, &y, &z); err != nil {
 		return err
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
 		if value, ok := element.(*BaseEntity); ok {
-			value.Lock()
 			value.eX = float64(x)
 			value.eY = float64(y)
 			value.eZ = float64(z)
-			value.Unlock()
 		}
 	}
 	return nil
@@ -333,7 +327,7 @@ func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r     = bytes.NewReader(p.Data)
+		r     = bufio.NewReader(bytes.NewReader(p.Data))
 		count pk.VarInt
 	)
 	if err := count.Decode(r); err != nil {
@@ -352,5 +346,15 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 		return nil
 	}
 	// TODO
+	return nil
+}
+func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
+	r := bufio.NewReader(bytes.NewReader(p.Data))
+	for _, v := range fields {
+		err := v.Decode(r)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
