@@ -52,63 +52,63 @@ func (entity *BaseEntity) GetID() (id int32) {
 	if entity == nil {
 		return 0
 	}
-	// entity.Lock()
+	entity.Lock()
 	id = entity.eID
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetType() (eType int32) {
 	if entity == nil {
 		return 0
 	}
-	// entity.Lock()
+	entity.Lock()
 	eType = entity.eType
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetUUID() (id uuid.UUID) {
 	if entity == nil {
 		return uuid.UUID{}
 	}
-	// entity.Lock()
+	entity.Lock()
 	id = entity.eUUID
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetX() (x float64) {
 	if entity == nil {
 		return 0
 	}
-	// entity.Lock()
+	entity.Lock()
 	x = entity.eX
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetY() (y float64) {
 	if entity == nil {
 		return 0
 	}
-	// entity.Lock()
+	entity.Lock()
 	y = entity.eY
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetZ() (z float64) {
 	if entity == nil {
 		return 0
 	}
-	// entity.Lock()
+	entity.Lock()
 	z = entity.eZ
-	// entity.Unlock()
+	entity.Unlock()
 	return
 }
 func (entity *BaseEntity) GetSquaredDistanceToClient(c *Client) float64 {
-	// entity.Lock()
+	entity.Lock()
 	c.Position.Lock()
 	diffX := entity.eX - c.x
 	diffY := entity.eY - c.y
 	diffZ := entity.eZ - c.z
 	c.Position.Unlock()
-	// entity.Unlock()
+	entity.Unlock()
 	return diffX*diffX + diffY*diffY + diffZ*diffZ
 }

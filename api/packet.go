@@ -297,11 +297,11 @@ func (c *Client) handleEntityLocationUpdatePacket(p *pk.Packet) error {
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
 		if value, ok := element.(*BaseEntity); ok {
-			//value.Lock()
+			value.Lock()
 			value.eX = (float64(x)/128 + value.eX*32) / 32
 			value.eY = (float64(y)/128 + value.eY*32) / 32
 			value.eZ = (float64(z)/128 + value.eZ*32) / 32
-			//value.Unlock()
+			value.Unlock()
 		}
 	}
 	return nil
@@ -319,11 +319,11 @@ func (c *Client) handleEntityTeLePortPacket(p *pk.Packet) error {
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
 		if value, ok := element.(*BaseEntity); ok {
-			//value.Lock()
+			value.Lock()
 			value.eX = float64(x)
 			value.eY = float64(y)
 			value.eZ = float64(z)
-			//value.Unlock()
+			value.Unlock()
 		}
 	}
 	return nil
