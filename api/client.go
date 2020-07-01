@@ -78,7 +78,8 @@ func NewClient() *Client {
 						incomeErr = err
 						break
 					} else {
-						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
+						client.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+						//_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
 					}
 					break
 				case data.DisconnectPlay:
