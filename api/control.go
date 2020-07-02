@@ -28,9 +28,9 @@ func (c *Client) ToggleFly(enable bool) {
 	))
 }
 func (c *Client) Move(x, y, z float64, onGround bool) {
-	c.SetX(x)
-	c.SetY(y)
-	c.SetZ(z)
+	c.SetX(c.GetX() + x)
+	c.SetY(c.GetY() + y)
+	c.SetZ(c.GetZ() + z)
 	c.SetOnGround(onGround)
 	c.SendPacket(pk.Marshal(
 		data.PlayerPosition,
