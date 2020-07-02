@@ -33,7 +33,7 @@ func (p *TpsCounter) onTimeUpdate(age, timeOfDay int64) (bool, error) {
 
 //GetTps _
 func (p *TpsCounter) GetTps() float64 {
-	return float64(int64((p.packetCount * 20))) / float64((time.Now().Unix() - p.markRealTime))
+	return float64(p.packetCount*20) / float64(time.Now().Unix()-p.markRealTime)
 }
 
 //Sleep _
