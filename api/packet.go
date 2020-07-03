@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
@@ -345,7 +346,55 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 	if c.World == nil {
 		return nil
 	}
-	// TODO
+	var (
+		X, Z           pk.Int
+		FullChunk      pk.Boolean
+		PrimaryBitMask pk.VarInt
+		Heightmaps     struct{}
+		Biomes         = biomesData{fullChunk: (*bool)(&FullChunk)}
+		Data           chunkData
+	)
+	if err := p.Scan(&X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
+		return err
+	}
+	chunk, err := world.DecodeChunkColumn(int32(PrimaryBitMask), Data)
+	if err != nil {
+		return fmt.Errorf("decode chunk column fail: %w", err)
+	}
+	c.World.LoadChunk(int(X), int(Z), chunk)
+	return nil
+}
+
+type biomesData struct {
+	fullChunk *bool
+	data      [1024]int32
+}
+
+func (b *biomesData) Decode(r pk.DecodeReader) error {
+	if b.fullChunk == nil || !*b.fullChunk {
+		return nil
+	}
+	for i := range b.data {
+		err := (*pk.Int)(&b.data[i]).Decode(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type chunkData []byte
+
+// Decode implement net.packet.FieldDecoder
+func (c *chunkData) Decode(r pk.DecodeReader) error {
+	var Size pk.VarInt
+	if err := Size.Decode(r); err != nil {
+		return err
+	}
+	*c = make([]byte, Size)
+	if _, err := r.Read(*c); err != nil {
+		return err
+	}
 	return nil
 }
 func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
