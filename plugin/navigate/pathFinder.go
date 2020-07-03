@@ -60,23 +60,25 @@ func (f *pathFinder) getNodes() []*node {
 		delete(f.openNodeList, nodePos)
 		f.count--
 		f.closeNodeList[nodePos] = thisNode
-		for x := -1; x < 2; x++ {
-			for y := -1; y < 2; y++ {
-				for z := -1; z < 2; z++ {
-					pos := pos{x: x + nodePos.x, y: y + nodePos.y, z: z + nodePos.z}
-					/*
-						if v, ok := f.openNodeList[pos]; ok == true {
-							if v.getGuessCost(f.endPos) < thisNode.getGuessCost(f.endPos) {
-								v.lastNode = thisNode
-								v.setCost()
-							}
-						}
-					*/
-					if f.nodeRule(thisNode, pos) {
-						f.openNodeList[pos] = newNode(pos, thisNode)
-						f.count++
-					}
-				}
+		for x := -1; x < 2; x += 2 {
+			pos := pos{x: x + nodePos.x, y: nodePos.y, z: nodePos.z}
+			if f.nodeRule(thisNode, pos) {
+				f.openNodeList[pos] = newNode(pos, thisNode)
+				f.count++
+			}
+		}
+		for y := -1; y < 2; y += 2 {
+			pos := pos{x: nodePos.x, y: y + nodePos.y, z: nodePos.z}
+			if f.nodeRule(thisNode, pos) {
+				f.openNodeList[pos] = newNode(pos, thisNode)
+				f.count++
+			}
+		}
+		for z := -1; z < 2; z += 2 {
+			pos := pos{x: nodePos.x, y: nodePos.y, z: z + nodePos.z}
+			if f.nodeRule(thisNode, pos) {
+				f.openNodeList[pos] = newNode(pos, thisNode)
+				f.count++
 			}
 		}
 	}
@@ -91,7 +93,7 @@ func (f *pathFinder) nodeRule(node *node, p pos) bool {
 	y := f.startPos.y + p.y
 	z := f.startPos.z + p.z
 	//println(x, y, z, f.c.World.GetBlockStatus(x, y, z))
-	if f.c.World.GetBlockStatus(x, y, z) == 0 && f.c.World.GetBlockStatus(x, y+1, z) == 0 {
+	if (y < 0 || f.c.World.GetBlockStatus(x, y, z) == 0) && (y < 0 || f.c.World.GetBlockStatus(x, y+1, z) == 0) {
 		pass = true
 	}
 	return pass

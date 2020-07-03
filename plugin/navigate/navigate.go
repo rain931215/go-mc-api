@@ -36,6 +36,6 @@ func (p *Navigate) Move(x, y, z float64) {
 		dz := originalZ + float64(nodes[i].pos.z)
 		log.Println(dx, dy, dz)
 		p.c.Move(dx, dy, dz, false)
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
