@@ -93,7 +93,7 @@ func (f *pathFinder) nodeRule(node *node, p pos) bool {
 	y := f.startPos.y + p.y
 	z := f.startPos.z + p.z
 	//println(x, y, z, f.c.World.GetBlockStatus(x, y, z))
-	if (y < 0 || f.c.World.GetBlockStatus(x, y, z) == 0) && (y < 0 || f.c.World.GetBlockStatus(x, y+1, z) == 0) {
+	if (y < 0 || f.c.World.GetBlockStatus(x, y, z) == 0) && (y+1 < 0 || f.c.World.GetBlockStatus(x, y+1, z) == 0) {
 		pass = true
 	}
 	return pass
