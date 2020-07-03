@@ -15,10 +15,10 @@ type Navigate struct {
 }
 
 //New _
-func New(cmdhandler *mcfalloutcmd.McfalloutCmd) *Navigate {
+func New(cmdHandler *mcfalloutcmd.McfalloutCmd) *Navigate {
 	p := new(Navigate)
-	p.c = cmdhandler.Client
-	cmdhandler.AddCmd("move", func(c *api.Client, sender string, text string, args []string) {
+	p.c = cmdHandler.Client
+	cmdHandler.AddCmd("move", func(c *api.Client, sender string, text string, args []string) {
 		if len(args) != 3 {
 			return
 		}
@@ -31,7 +31,7 @@ func New(cmdhandler *mcfalloutcmd.McfalloutCmd) *Navigate {
 		p.Move(x, y, z)
 	})
 
-	cmdhandler.AddCmd("moveto", func(c *api.Client, sender string, text string, args []string) {
+	cmdHandler.AddCmd("moveto", func(c *api.Client, sender string, text string, args []string) {
 		if len(args) != 3 {
 			return
 		}
@@ -46,7 +46,12 @@ func New(cmdhandler *mcfalloutcmd.McfalloutCmd) *Navigate {
 	return p
 }
 
-//MoveTo -> move to pos
+//Move _
+func (p *Navigate) Move(x, y, z float64) {
+	p.MoveTo(p.c.GetX()+x, p.c.GetY()+y, p.c.GetZ()+z)
+}
+
+//MoveTo _
 func (p *Navigate) MoveTo(x, y, z float64) {
 	originalX := math.Floor(p.c.GetX()) + 0.5
 	originalY := math.Floor(p.c.GetY())
@@ -65,9 +70,4 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 		p.c.Move(dx, dy, dz, false)
 		time.Sleep(100 * time.Millisecond)
 	}
-}
-
-//Move -> relative move
-func (p *Navigate) Move(x, y, z float64) {
-	p.Move(p.c.GetX()+x, p.c.GetY()+y, p.c.GetZ()+z)
 }
