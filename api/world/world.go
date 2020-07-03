@@ -54,7 +54,7 @@ type ChunkLoc struct {
 
 //GetBlockStatus return the block in the position (x, y, z)
 func (w *World) GetBlockStatus(x, y, z int) BlockStatus {
-	if y < 0 {
+	if (y < 0) || (y > 255) {
 		return 0
 	}
 	w.ChunkMapLock.Lock()
