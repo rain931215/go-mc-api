@@ -21,7 +21,7 @@ type Command struct {
 
 //McfalloutCmd _
 type McfalloutCmd struct {
-	client    *api.Client
+	Client    *api.Client
 	whiteList []string
 	cmdList   []*Command
 }
@@ -29,7 +29,7 @@ type McfalloutCmd struct {
 // New _
 func New(c *api.Client) *McfalloutCmd {
 	p := new(McfalloutCmd)
-	p.client = c
+	p.Client = c
 	c.Event.AddEventHandler(p.main, "chat")
 
 	file := viper.New()
@@ -49,8 +49,8 @@ func New(c *api.Client) *McfalloutCmd {
 		fmt.Println("White List Change")
 	})
 	//Load defaultCommand
-	p.AddCmd("say", say)
-	p.AddCmd("addadmin", addAdmin)
+	p.loadDefaultCmd()
+
 	return p
 }
 
@@ -63,7 +63,7 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 				if strings.Index(text, p.cmdList[i].name) == 0 {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
 					args := strings.Split(text, " ")
-					p.cmdList[i].method(p.client, p.cmdList[i].name, text, args)
+					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args)
 					return false, nil
 				}
 			}

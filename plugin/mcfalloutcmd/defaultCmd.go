@@ -5,6 +5,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+func (p *McfalloutCmd) loadDefaultCmd() {
+	p.AddCmd("say", say)
+	p.AddCmd("addadmin", addAdmin)
+	p.AddCmd("respawn", respawn)
+}
+
 func addAdmin(c *api.Client, sender string, text string, args []string) {
 	file := viper.New()
 	file.SetConfigName("whiteList")
@@ -17,4 +23,7 @@ func addAdmin(c *api.Client, sender string, text string, args []string) {
 
 func say(c *api.Client, sender string, text string, args []string) {
 	c.Chat(text)
+}
+func respawn(c *api.Client, sender string, text string, args []string) {
+	c.ReSpawn()
 }
