@@ -89,10 +89,8 @@ func (entity *BaseEntity) GetZ() (z float64) {
 	return
 }
 func (entity *BaseEntity) GetSquaredDistanceToClient(c *Client) float64 {
-	c.Position.Lock()
 	diffX := entity.eX - c.x
 	diffY := entity.eY - c.y
 	diffZ := entity.eZ - c.z
-	c.Position.Unlock()
 	return diffX*diffX + diffY*diffY + diffZ*diffZ
 }
