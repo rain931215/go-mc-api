@@ -96,7 +96,7 @@ func (c *Client) AttackEntity(id int32) {
 	c.SendPacket(pk.Marshal(
 		data.UseEntity,
 		pk.VarInt(id),
-		pk.VarInt(0),
+		pk.VarInt(1),
 	))
 }
 func (c *Client) SwitchHotBar(slot int16) {
