@@ -25,17 +25,17 @@ func (p *Navigate) Move(x, y, z float64) {
 	originalX := math.Floor(p.c.GetX()) + 0.5
 	originalY := math.Floor(p.c.GetY())
 	originalZ := math.Floor(p.c.GetZ()) + 0.5
-	p.c.Move(originalX, originalY, originalZ, true)
+	p.c.Move(originalX, originalY, originalZ, false)
 	f := setNewPath(x, y, z, p.c)
 	nodes := f.getNodes()
 
 	for i := len(nodes) - 1; i > 0; i-- {
 
-		dx := (originalX + float64(nodes[i].pos.x))
-		dy := (originalY + float64(nodes[i].pos.y))
-		dz := (originalZ + float64(nodes[i].pos.z))
+		dx := originalX + float64(nodes[i].pos.x)
+		dy := originalY + float64(nodes[i].pos.y)
+		dz := originalZ + float64(nodes[i].pos.z)
 		log.Println(dx, dy, dz)
-		p.c.Move(dx, dy, dz, true)
+		p.c.Move(dx, dy, dz, false)
 		time.Sleep(300 * time.Millisecond)
 	}
 }

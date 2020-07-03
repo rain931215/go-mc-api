@@ -2,6 +2,7 @@ package navigate
 
 import (
 	"github.com/rain931215/go-mc-api/api"
+	"math"
 )
 
 type pathFinder struct {
@@ -19,11 +20,11 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 	f.startPointX = 0
 	f.startPointY = 0
 	f.startPointZ = 0
-	f.startPos = pos{x: int(f.c.GetX()), y: int(f.c.GetY()), z: int(f.c.GetZ())}
+	f.startPos = pos{x: int(math.Floor(f.c.GetX())), y: int(math.Floor(f.c.GetY())), z: int(math.Floor(f.c.GetZ()))}
 	f.endPointX = x - c.GetX()
 	f.endPointY = y - c.GetY()
 	f.endPointZ = z - c.GetZ()
-	f.endPos = pos{x: int(f.endPointX), y: int(f.endPointY), z: int(f.endPointZ)}
+	f.endPos = pos{x: int(math.Floor(f.endPointX)), y: int(math.Floor(f.endPointY)), z: int(math.Floor(f.endPointZ))}
 	f.openNodeList = make(map[pos]*node)
 	f.closeNodeList = make(map[pos]*node)
 	pos := pos{x: 0, y: 0, z: 0}
@@ -33,7 +34,7 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 }
 
 func (f *pathFinder) getNodes() []*node {
-	var nodes []*node = make([]*node, 1)
+	var nodes = make([]*node, 1)
 	for {
 		if f.count < 1 {
 			println("wrong")
@@ -41,10 +42,10 @@ func (f *pathFinder) getNodes() []*node {
 		}
 		var (
 			FList   []uint8
-			getNode map[uint8]*node = make(map[uint8]*node)
+			getNode = make(map[uint8]*node)
 		)
 		for _, node := range f.openNodeList {
-			F := (node.cost + node.getGuessCost(f.endPos))
+			F := node.cost + node.getGuessCost(f.endPos)
 			FList = append(FList, F)
 			getNode[F] = node
 		}
