@@ -1,8 +1,9 @@
 package navigate
 
 import (
-	"github.com/rain931215/go-mc-api/api"
 	"math"
+
+	"github.com/rain931215/go-mc-api/api"
 )
 
 type pathFinder struct {
@@ -11,7 +12,7 @@ type pathFinder struct {
 	endPointX, endPointY, endPointZ       float64
 	startPos, endPos                      pos
 	openNodeList, closeNodeList           map[pos]*node
-	count                                 uint8
+	count                                 uint16
 }
 
 func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
@@ -41,8 +42,8 @@ func (f *pathFinder) getNodes() []*node {
 			return nodes
 		}
 		var (
-			FList   []uint8
-			getNode = make(map[uint8]*node)
+			FList   []uint16
+			getNode = make(map[uint16]*node)
 		)
 		for _, node := range f.openNodeList {
 			F := node.cost + node.getGuessCost(f.endPos)
@@ -69,6 +70,9 @@ func (f *pathFinder) getNodes() []*node {
 		}
 		for y := -1; y < 2; y += 2 {
 			pos := pos{x: nodePos.x, y: y + nodePos.y, z: nodePos.z}
+			if pos.y < -2 || pos.y > 255 {
+				continue
+			}
 			if f.nodeRule(thisNode, pos) {
 				f.openNodeList[pos] = newNode(pos, thisNode)
 				f.count++
@@ -89,6 +93,11 @@ func (f *pathFinder) nodeRule(node *node, p pos) bool {
 	if _, ok := f.closeNodeList[p]; ok == true {
 		return false
 	}
+	if v, ok := f.openNodeList[p]; ok == true {
+		v.lastNode = node
+		v.setCost()
+		return false
+	}
 	x := f.startPos.x + p.x
 	y := f.startPos.y + p.y
 	z := f.startPos.z + p.z
@@ -99,7 +108,7 @@ func (f *pathFinder) nodeRule(node *node, p pos) bool {
 	return pass
 }
 
-func min(l []uint8) (min uint8) {
+func min(l []uint16) (min uint16) {
 	min = l[0]
 	for _, v := range l {
 		if v < min {

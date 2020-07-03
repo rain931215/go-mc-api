@@ -7,7 +7,7 @@ type pos struct {
 type node struct {
 	pos      pos
 	lastNode *node
-	cost     uint8
+	cost     uint16
 }
 
 func newNode(pos pos, lastNode *node) *node {
@@ -22,8 +22,8 @@ func (n *node) setCost() {
 	n.cost = n.lastNode.cost + n.getCost()
 }
 
-func (n *node) getCost() uint8 {
-	var count uint8
+func (n *node) getCost() uint16 {
+	var count uint16
 	if n.lastNode.pos.x != n.pos.x {
 		count++
 	}
@@ -44,7 +44,7 @@ func (n *node) getCost() uint8 {
 	return 0
 }
 
-func (n *node) getGuessCost(end pos) uint8 {
+func (n *node) getGuessCost(end pos) uint16 {
 	return 10 * (simpleAbs(end.x-n.pos.x) + simpleAbs(end.y-n.pos.y) + simpleAbs(end.z-n.pos.z))
 }
 
@@ -58,9 +58,9 @@ func (n *node) returnNodes(nodes []*node) []*node {
 	return nodes
 }
 
-func simpleAbs(n int) uint8 {
+func simpleAbs(n int) uint16 {
 	if n > 0 {
-		return uint8(n)
+		return uint16(n)
 	}
-	return uint8(-n)
+	return uint16(-n)
 }
