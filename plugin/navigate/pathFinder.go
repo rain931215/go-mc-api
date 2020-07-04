@@ -1,6 +1,7 @@
 package navigate
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/rain931215/go-mc-api/api"
@@ -40,7 +41,10 @@ func (f *pathFinder) getNodes() []*node {
 		println("wrong")
 		return nodes
 	}
+	tempCount := 0
 	for {
+		tempCount++
+		fmt.Println(tempCount)
 		if f.count < 1 {
 			println("wrong")
 			return nodes
@@ -74,9 +78,9 @@ func (f *pathFinder) getNodes() []*node {
 		}
 		for y := -1; y < 2; y += 2 {
 			pos := pos{x: nodePos.x, y: y + nodePos.y, z: nodePos.z}
-			if pos.y < -2 || pos.y > 255 {
+			/*if pos.y < -2 || pos.y > 255 {
 				continue
-			}
+			}*/
 			if f.nodeRule(thisNode, pos) {
 				f.openNodeList[pos] = newNode(pos, thisNode)
 				f.count++

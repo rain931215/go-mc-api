@@ -41,7 +41,9 @@ func New(cmdHandler *mcfalloutcmd.McfalloutCmd) *Navigate {
 		if err != nil {
 			return
 		}
-		p.MoveTo(x, y, z)
+		go func() {
+			p.MoveTo(x, y, z)
+		}()
 	})
 	return p
 }
