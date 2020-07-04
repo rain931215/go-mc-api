@@ -117,3 +117,6 @@ func min(l []uint16) (min uint16) {
 	}
 	return
 }
+func (f *pathFinder) getBlock(pos1 pos) uint32 {
+	return uint32(f.c.World.GetBlockStatus(pos1.x, pos1.y, pos1.z))
+}

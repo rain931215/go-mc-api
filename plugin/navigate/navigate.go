@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rain931215/go-mc-api/api"
-	mcfalloutcmd "github.com/rain931215/go-mc-api/plugin/mcfalloutcmd"
+	"github.com/rain931215/go-mc-api/plugin/mcfalloutcmd"
 )
 
 //Navigate _
