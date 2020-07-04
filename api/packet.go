@@ -58,6 +58,8 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleEntityTeLePortPacket(p)
 	case data.DestroyEntities:
 		return c.handleRemoveEntityPacket(p)
+	case data.UnloadChunk:
+		return c.handleUnlockChunk(p)
 	default:
 		return nil
 	}
@@ -339,6 +341,21 @@ func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
 		if entityID.Decode(r) == nil {
 			c.EntityList.hashMap.Del(int32(entityID))
 		}
+	}
+	return nil
+}
+func (c *Client) handleUnlockChunk(p *pk.Packet) error {
+	if c.World == nil {
+		return nil
+	}
+	var cX, cZ pk.Int
+	err := ScanFields(p, &cX, &cZ)
+	if err == nil {
+		c.World.ChunkMapLock.Lock()
+		if _, ok := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cZ)}]; ok {
+			c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cZ)}] = nil
+		}
+		c.World.ChunkMapLock.Unlock()
 	}
 	return nil
 }
