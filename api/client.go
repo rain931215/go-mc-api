@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const bufferPacketChannelSize int = 100
+const bufferPacketChannelSize int = 300
 
 // 改寫的客戶端結構
 type Client struct {
@@ -24,7 +24,7 @@ type Client struct {
 	EntityList *EntityList
 	*Position
 	packetChannel struct {
-		outChannel      chan pk.Packet
+		outChannel      chan *pk.Packet
 		inStatusChannel chan error
 	}
 	Event Events
@@ -48,21 +48,20 @@ func NewClient() (client *Client) {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetChannel.outChannel = make(chan pk.Packet, bufferPacketChannelSize)
+	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
 			p := <-client.packetChannel.outChannel
-			if client.connected {
-				_ = client.Native.Conn().WritePacket(p)
+			if p == nil || client.Native.Conn() == nil {
+				continue
 			}
+			_ = client.Native.Conn().WritePacket(*p)
 		}
 	}()
 	go func() {
 		var (
-			incomeErr    error
-			r            = &bytes.Reader{}
-			buffedReader = bufio.NewReader(r)
+			incomeErr error
 		)
 		for {
 			<-client.packetChannel.inStatusChannel
@@ -74,10 +73,10 @@ func NewClient() (client *Client) {
 					incomeErr = err
 					break
 				}
-				r.Reset(p.Data)
 				twoBreak := false
 				switch p.ID {
 				case 0x1b: // 0x1b = Disconnect (play) https://wiki.vg/Protocol#Disconnect_.28play.29
+					buffedReader := bufio.NewReader(bytes.NewReader(p.Data))
 					var msg chat.Message
 					if msg.Decode(buffedReader) == nil {
 						//TODO (Async Events)
@@ -101,6 +100,7 @@ func NewClient() (client *Client) {
 					twoBreak = true
 					break
 				case data.KeepAliveClientbound:
+					buffedReader := bufio.NewReader(bytes.NewReader(p.Data))
 					var ID pk.Long
 					if err := ID.Decode(buffedReader); err == nil {
 						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
@@ -143,7 +143,7 @@ func (c *Client) SendPacket(packet pk.Packet) {
 	if c.packetChannel.outChannel == nil {
 		return
 	}
-	c.packetChannel.outChannel <- packet
+	c.packetChannel.outChannel <- &packet
 }
 func (c *Client) Connected() bool {
 	return c.Status.connected
