@@ -36,6 +36,10 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 
 func (f *pathFinder) getNodes() []*node {
 	var nodes = make([]*node, 1)
+	if f.c.World.GetBlockStatus(f.endPos.x, f.endPos.y, f.endPos.z) != 0 || f.c.World.GetBlockStatus(f.endPos.x, f.endPos.y+1, f.endPos.z) != 0 {
+		println("wrong")
+		return nodes
+	}
 	for {
 		if f.count < 1 {
 			println("wrong")
