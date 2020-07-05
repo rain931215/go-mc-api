@@ -103,7 +103,7 @@ func NewClient() (client *Client) {
 					buffedReader := bufio.NewReader(bytes.NewReader(p.Data))
 					var ID pk.Long
 					if err := ID.Decode(buffedReader); err == nil {
-						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
+						go client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
 					}
 					break
 				default:

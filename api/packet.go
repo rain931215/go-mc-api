@@ -18,51 +18,62 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	if p == nil {
 		return nil
 	}
-	//TODO (Async Events)
-	if c.Event.packetHandlers != nil && len(c.Event.packetHandlers) >= 1 {
-		for _, v := range c.Event.packetHandlers {
-			if v == nil {
-				continue
-			}
-			pass, err := v(p)
-			if err != nil {
-				return errors.New("Packet event error" + err.Error())
-			}
-			if pass {
-				return nil
+	go func() {
+		//TODO (Async Events)
+		if c.Event.packetHandlers != nil && len(c.Event.packetHandlers) >= 1 {
+			for _, v := range c.Event.packetHandlers {
+				if v == nil {
+					continue
+				}
+				pass, err := v(p)
+				if err != nil || pass {
+					break
+				}
 			}
 		}
-	}
+	}()
 	switch p.ID {
 	case data.ChatMessageClientbound:
-		return c.handleChatPacket(p)
+		go c.handleChatPacket(p)
+		break
 	case data.Title:
-		return c.handleTitlePacket(p)
+		go c.handleTitlePacket(p)
+		break
 	case data.BlockChange:
-		return c.handleBlockChangePacket(p)
+		go c.handleBlockChangePacket(p)
+		break
 	case data.MultiBlockChange:
-		return c.handleMultiBlockChangePacket(p)
+		go c.handleMultiBlockChangePacket(p)
+		break
 	case data.PlayerPositionAndLookClientbound:
-		return c.handleMoveAndRotationPacket(p)
+		go c.handleMoveAndRotationPacket(p)
+		break
 	case data.ChunkData:
-		return c.handleLoadChunkPacket(p)
+		go c.handleLoadChunkPacket(p)
+		break
 	case data.SetSlot:
-		return c.handleSetSlotPacket(p)
+		go c.handleSetSlotPacket(p)
+		break
 	case data.TimeUpdate:
-		return c.handleTimeUpdatePacket(p)
+		go c.handleTimeUpdatePacket(p)
+		break
 	case data.SpawnMob:
-		return c.handleSpawnMobPacket(p)
+		go c.handleSpawnMobPacket(p)
+		break
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
-		return c.handleEntityLocationUpdatePacket(p)
+		c.handleEntityLocationUpdatePacket(p)
+		break
 	case data.EntityTeleport:
-		return c.handleEntityTeLePortPacket(p)
+		c.handleEntityTeLePortPacket(p)
+		break
 	case data.DestroyEntities:
-		return c.handleRemoveEntityPacket(p)
+		c.handleRemoveEntityPacket(p)
+		break
 	case data.UnloadChunk:
-		return c.handleUnlockChunk(p)
-	default:
-		return nil
+		c.handleUnlockChunk(p)
+		break
 	}
+	return nil
 }
 func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	var (
