@@ -61,16 +61,16 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		go c.handleSpawnMobPacket(p)
 		break
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
-		c.handleEntityLocationUpdatePacket(p)
+		go c.handleEntityLocationUpdatePacket(p)
 		break
 	case data.EntityTeleport:
-		c.handleEntityTeLePortPacket(p)
+		go c.handleEntityTeLePortPacket(p)
 		break
 	case data.DestroyEntities:
-		c.handleRemoveEntityPacket(p)
+		go c.handleRemoveEntityPacket(p)
 		break
 	case data.UnloadChunk:
-		c.handleUnlockChunk(p)
+		go c.handleUnlockChunk(p)
 		break
 	}
 	return nil
