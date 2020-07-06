@@ -104,7 +104,7 @@ func NewClient() (client *Client) {
 					var ID pk.Long
 					if err := ID.Decode(bufio.NewReader(bytes.NewReader(p.Data))); err == nil {
 						go func() {
-							client.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 							time.Sleep(5 * time.Second)
 							client.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 						}()
