@@ -60,8 +60,11 @@ func (f *pathFinder) getNodes() []*node {
 			println("finish")
 			return f.node.returnNodes([]*node{f.node})
 		}
+		// 從待算裡面移除現在的節點
 		delete(f.openNodeList, f.node.pos)
+		// 讓節點變成已被計算
 		f.closeNodeList[f.node.pos] = f.node
+		// 產生節點
 		for offSet := -1; offSet < 2; offSet += 2 {
 			f.openNewNode(pos{x: f.node.pos.x + offSet, y: f.node.pos.y, z: f.node.pos.z})
 			f.openNewNode(pos{x: f.node.pos.x, y: f.node.pos.y, z: f.node.pos.z + offSet})
@@ -123,16 +126,6 @@ func (f *pathFinder) nodeRule(p pos) bool {
 	}
 	return false
 }
-
-/*func min(l []*node) (min *node) {
-	min = l[0]
-	for _, v := range l {
-		if v.f < min.f {
-			min = v
-		}
-	}
-	return
-}*/
 
 func (f *pathFinder) getBlock(pos1 pos) uint32 {
 	return uint32(f.c.World.GetBlockStatus(pos1.x, pos1.y, pos1.z))
