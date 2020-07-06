@@ -38,7 +38,7 @@ func (list *EntityList) GetAllEntities() []*BaseEntity {
 	if list == nil || list.hashMap == nil {
 		return nil
 	}
-	entitiesList := make([]*BaseEntity, list.hashMap.Len()/2)
+	var entitiesList []*BaseEntity
 	for entity := range list.hashMap.Iter() {
 		if value, ok := entity.Value.(*BaseEntity); ok {
 			entitiesList = append(entitiesList, value)

@@ -42,98 +42,89 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 }
 
 func (f *pathFinder) getNodes() []*node {
-	var nodes = make([]*node, 1)
 	if f.c.World.GetBlockStatus(f.endPointX, f.endPointY, f.endPointZ) != 0 || f.c.World.GetBlockStatus(f.endPointX, f.endPointY+1, f.endPointZ) != 0 {
 		println("wrong")
-		return nodes
+		return make([]*node, 1)
 	}
 	tempCount := 0
 	for {
 		tempCount++
-		fmt.Println(tempCount)
-
 		if len(f.FList) < 1 {
 			println("wrong")
-			return nodes
+			return make([]*node, 1)
 		}
-
 		f.node = f.FList[0]
+		fmt.Println(tempCount, f.node)
 		f.FList = f.FList[1:]
 		if f.node.pos == f.endPos {
 			println("finish")
-			nodes = append(nodes, f.node)
-			nodes = f.node.returnNodes(nodes)
-			return nodes
+			return f.node.returnNodes([]*node{f.node})
 		}
-
 		delete(f.openNodeList, f.node.pos)
 		f.closeNodeList[f.node.pos] = f.node
-		for x := -1; x < 2; x += 2 {
-			pos := pos{x: x + f.node.pos.x, y: f.node.pos.y, z: f.node.pos.z}
-			f.openNewNode(pos)
-		}
-		for y := -1; y < 2; y += 2 {
-			pos := pos{x: f.node.pos.x, y: y + f.node.pos.y, z: f.node.pos.z}
-			y := pos.y + f.startPointY
-			if y < -2 || y > 255 {
+		for offSet := -1; offSet < 2; offSet += 2 {
+			f.openNewNode(pos{x: f.node.pos.x + offSet, y: f.node.pos.y, z: f.node.pos.z})
+			f.openNewNode(pos{x: f.node.pos.x, y: f.node.pos.y, z: f.node.pos.z + offSet})
+			pos := pos{x: f.node.pos.x, y: offSet + f.node.pos.y, z: f.node.pos.z}
+			if y := pos.y + f.startPointY; y < -2 || y > 257 {
 				continue
 			}
 			f.openNewNode(pos)
 		}
-		for z := -1; z < 2; z += 2 {
-			pos := pos{x: f.node.pos.x, y: f.node.pos.y, z: z + f.node.pos.z}
-			f.openNewNode(pos)
-		}
 	}
 }
 
+// 插入新節點
 func (f *pathFinder) openNewNode(p pos) {
-	if f.nodeRule(p) {
-		node := newNode(p, f.node)
-		node.f = node.cost + node.getGuessCost(f.endPos)
-		f.flistRefrsh(node)
-		f.openNodeList[p] = node
+	if f.nodeRule(p) { // 如果節點需要計算
+		node := newNode(p, f.node)                       // 產生新節點
+		node.f = node.cost + node.getGuessCost(f.endPos) // 取得成本
+		f.fListInsert(node)                              // 插入節點
+		f.openNodeList[p] = node                         // 加入節點
 	}
 }
 
-func (f *pathFinder) flistRefrsh(node *node) {
+// 從小到大排序
+func (f *pathFinder) fListInsert(nodeToInsert *node) {
 	for i := 0; i < len(f.FList); i++ {
-		if node.f == f.FList[i].f || node.f < f.FList[i].f {
-			f.FList = append(append(f.FList[:i], node), f.FList[i:]...)
-			break
+		if nodeToInsert.f == f.FList[i].f || nodeToInsert.f < f.FList[i].f {
+			f.FList = append(append(f.FList[:i], nodeToInsert), f.FList[i:]...)
+			return
 		}
 	}
-	f.FList = append(f.FList, node)
+	f.FList = append(f.FList, nodeToInsert)
 }
 
+// 節點判斷
 func (f *pathFinder) nodeRule(p pos) bool {
-	var pass bool
-	if _, ok := f.closeNodeList[p]; ok == true {
+	// 判斷節點是否已經算過
+	if _, ok := f.closeNodeList[p]; ok {
 		return false
 	}
-	if v, ok := f.openNodeList[p]; ok == true {
+	if v, ok := f.openNodeList[p]; ok {
 		if v.getGuessCost(f.endPos) < f.node.getGuessCost(f.endPos) {
 			v.lastNode = f.node
 			v.setCost()
 			v.f = v.cost + v.getGuessCost(f.endPos)
-			f.flistRefrsh(v)
+			f.fListInsert(v)
 		}
 		return false
 	}
+	// 得出絕對座標
 	x := f.startPointX + p.x
 	y := f.startPointY + p.y
 	z := f.startPointZ + p.z
-
-	//println(x, y, z, f.c.World.GetBlockStatus(x, y, z))
+	// 取得方塊
 	feetBlock := f.c.World.GetBlockStatus(x, y, z)
 	headBlock := f.c.World.GetBlockStatus(x, y+1, z)
+	// 0 = 空氣 9130 = 洞穴空氣
 	if (feetBlock == 0 || feetBlock == 9130) && (headBlock == 0 || headBlock == 9130) {
-		pass = true
+		return true
 	}
-	return pass
+	return false
 }
 
-func min(l []*node) (min *node) {
+/*func min(l []*node) (min *node) {
 	min = l[0]
 	for _, v := range l {
 		if v.f < min.f {
@@ -141,7 +132,8 @@ func min(l []*node) (min *node) {
 		}
 	}
 	return
-}
+}*/
+
 func (f *pathFinder) getBlock(pos1 pos) uint32 {
 	return uint32(f.c.World.GetBlockStatus(pos1.x, pos1.y, pos1.z))
 }
