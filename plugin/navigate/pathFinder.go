@@ -9,24 +9,28 @@ import (
 
 type pathFinder struct {
 	c                                     *api.Client
-	startPointX, startPointY, startPointZ float64
-	endPointX, endPointY, endPointZ       float64
+	startPointX, startPointY, startPointZ int
+	endPointX, endPointY, endPointZ       int
 	startPos, endPos                      pos
 	openNodeList, closeNodeList           map[pos]*node
+	dx, dz                                uint16
 	count                                 uint16
+	node                                  *node
 }
 
 func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 	f := new(pathFinder)
 	f.c = c
-	f.startPointX = 0
-	f.startPointY = 0
-	f.startPointZ = 0
-	f.startPos = pos{x: int(math.Floor(f.c.GetX())), y: int(math.Floor(f.c.GetY())), z: int(math.Floor(f.c.GetZ()))}
-	f.endPointX = x - c.GetX()
-	f.endPointY = y - c.GetY()
-	f.endPointZ = z - c.GetZ()
-	f.endPos = pos{x: int(math.Floor(f.endPointX)), y: int(math.Floor(f.endPointY)), z: int(math.Floor(f.endPointZ))}
+	f.startPointX = int(math.Floor(f.c.GetX()))
+	f.startPointY = int(math.Floor(f.c.GetY()))
+	f.startPointZ = int(math.Floor(f.c.GetZ()))
+	f.startPos = pos{x: 0, y: 0, z: 0}
+	f.endPointX = int(math.Floor(x))
+	f.endPointY = int(math.Floor(y))
+	f.endPointZ = int(math.Floor(z))
+	f.endPos = pos{x: f.endPointX - f.startPointX, y: f.endPointY - f.startPointY, z: f.endPointZ - f.startPointZ}
+	f.dx = simpleAbs(f.endPos.x-f.startPos.x) * 2
+	f.dz = simpleAbs(f.endPos.z-f.startPos.z) * 2
 	f.openNodeList = make(map[pos]*node)
 	f.closeNodeList = make(map[pos]*node)
 	pos := pos{x: 0, y: 0, z: 0}
@@ -37,7 +41,7 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 
 func (f *pathFinder) getNodes() []*node {
 	var nodes = make([]*node, 1)
-	if f.c.World.GetBlockStatus(f.endPos.x, f.endPos.y, f.endPos.z) != 0 || f.c.World.GetBlockStatus(f.endPos.x, f.endPos.y+1, f.endPos.z) != 0 {
+	if f.c.World.GetBlockStatus(f.endPointX, f.endPointY, f.endPointZ) != 0 || f.c.World.GetBlockStatus(f.endPointX, f.endPointY+1, f.endPointZ) != 0 {
 		println("wrong")
 		return nodes
 	}
@@ -49,66 +53,67 @@ func (f *pathFinder) getNodes() []*node {
 			println("wrong")
 			return nodes
 		}
-		var (
-			FList   []uint16
-			getNode = make(map[uint16]*node)
-		)
+
+		var FList []*node
 		for _, node := range f.openNodeList {
-			F := node.cost + node.getGuessCost(f.endPos)
-			FList = append(FList, F)
-			getNode[F] = node
+			FList = append(FList, node)
 		}
-		thisNode := getNode[min(FList)]
-		nodePos := thisNode.pos
-		if thisNode.pos == f.endPos {
+		f.node = min(FList)
+
+		if f.node.pos == f.endPos {
 			println("finish")
-			nodes = append(nodes, thisNode)
-			nodes = thisNode.returnNodes(nodes)
+			nodes = append(nodes, f.node)
+			nodes = f.node.returnNodes(nodes)
 			return nodes
 		}
-		delete(f.openNodeList, nodePos)
+
+		delete(f.openNodeList, f.node.pos)
 		f.count--
-		f.closeNodeList[nodePos] = thisNode
+		f.closeNodeList[f.node.pos] = f.node
 		for x := -1; x < 2; x += 2 {
-			pos := pos{x: x + nodePos.x, y: nodePos.y, z: nodePos.z}
-			if f.nodeRule(thisNode, pos) {
-				f.openNodeList[pos] = newNode(pos, thisNode)
-				f.count++
-			}
+			pos := pos{x: x + f.node.pos.x, y: f.node.pos.y, z: f.node.pos.z}
+			f.openNewNode(pos)
 		}
 		for y := -1; y < 2; y += 2 {
-			pos := pos{x: nodePos.x, y: y + nodePos.y, z: nodePos.z}
-			/*if pos.y < -2 || pos.y > 255 {
+			pos := pos{x: f.node.pos.x, y: y + f.node.pos.y, z: f.node.pos.z}
+			y := pos.y + f.startPointY
+			if y < -2 || y > 255 {
 				continue
-			}*/
-			if f.nodeRule(thisNode, pos) {
-				f.openNodeList[pos] = newNode(pos, thisNode)
-				f.count++
 			}
+			f.openNewNode(pos)
 		}
 		for z := -1; z < 2; z += 2 {
-			pos := pos{x: nodePos.x, y: nodePos.y, z: z + nodePos.z}
-			if f.nodeRule(thisNode, pos) {
-				f.openNodeList[pos] = newNode(pos, thisNode)
-				f.count++
-			}
+			pos := pos{x: f.node.pos.x, y: f.node.pos.y, z: z + f.node.pos.z}
+			f.openNewNode(pos)
 		}
 	}
 }
 
-func (f *pathFinder) nodeRule(node *node, p pos) bool {
+func (f *pathFinder) openNewNode(p pos) {
+	if f.nodeRule(p) {
+		node := newNode(p, f.node)
+		node.f = node.cost + node.getGuessCost(f.endPos)
+		f.openNodeList[p] = node
+		f.count++
+	}
+}
+
+func (f *pathFinder) nodeRule(p pos) bool {
 	var pass bool
 	if _, ok := f.closeNodeList[p]; ok == true {
 		return false
 	}
 	if v, ok := f.openNodeList[p]; ok == true {
-		v.lastNode = node
-		v.setCost()
+		if v.getGuessCost(f.endPos) < f.node.getGuessCost(f.endPos) {
+			v.lastNode = f.node
+			v.setCost()
+		}
 		return false
 	}
-	x := f.startPos.x + p.x
-	y := f.startPos.y + p.y
-	z := f.startPos.z + p.z
+	x := f.startPointX + p.x
+	y := f.startPointY + p.y
+	z := f.startPointZ + p.z
+
 	//println(x, y, z, f.c.World.GetBlockStatus(x, y, z))
 	feetBlock := f.c.World.GetBlockStatus(x, y, z)
 	headBlock := f.c.World.GetBlockStatus(x, y+1, z)
@@ -118,10 +123,10 @@ func (f *pathFinder) nodeRule(node *node, p pos) bool {
 	return pass
 }
 
-func min(l []uint16) (min uint16) {
+func min(l []*node) (min *node) {
 	min = l[0]
 	for _, v := range l {
-		if v < min {
+		if v.f < min.f {
 			min = v
 		}
 	}
