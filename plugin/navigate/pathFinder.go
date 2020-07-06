@@ -16,6 +16,7 @@ type pathFinder struct {
 	dx, dz                                uint16
 	count                                 uint16
 	node                                  *node
+	FList                                 []*node
 }
 
 func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
@@ -34,8 +35,9 @@ func setNewPath(x, y, z float64, c *api.Client) *pathFinder {
 	f.openNodeList = make(map[pos]*node)
 	f.closeNodeList = make(map[pos]*node)
 	pos := pos{x: 0, y: 0, z: 0}
-	f.openNodeList[pos] = newNode(pos, new(node))
-	f.count++
+	firstNode := newNode(pos, new(node))
+	f.openNodeList[pos] = firstNode
+	f.FList = append(f.FList, firstNode)
 	return f
 }
 
@@ -49,17 +51,14 @@ func (f *pathFinder) getNodes() []*node {
 	for {
 		tempCount++
 		fmt.Println(tempCount)
-		if f.count < 1 {
+
+		if len(f.FList) < 1 {
 			println("wrong")
 			return nodes
 		}
 
-		var FList []*node
-		for _, node := range f.openNodeList {
-			FList = append(FList, node)
-		}
-		f.node = min(FList)
-
+		f.node = f.FList[0]
+		f.FList = f.FList[1:]
 		if f.node.pos == f.endPos {
 			println("finish")
 			nodes = append(nodes, f.node)
@@ -68,7 +67,6 @@ func (f *pathFinder) getNodes() []*node {
 		}
 
 		delete(f.openNodeList, f.node.pos)
-		f.count--
 		f.closeNodeList[f.node.pos] = f.node
 		for x := -1; x < 2; x += 2 {
 			pos := pos{x: x + f.node.pos.x, y: f.node.pos.y, z: f.node.pos.z}
@@ -93,9 +91,19 @@ func (f *pathFinder) openNewNode(p pos) {
 	if f.nodeRule(p) {
 		node := newNode(p, f.node)
 		node.f = node.cost + node.getGuessCost(f.endPos)
+		f.flistRefrsh(node)
 		f.openNodeList[p] = node
-		f.count++
 	}
+}
+
+func (f *pathFinder) flistRefrsh(node *node) {
+	for i := 0; i < len(f.FList); i++ {
+		if node.f == f.FList[i].f || node.f < f.FList[i].f {
+			f.FList = append(append(f.FList[:i], node), f.FList[i:]...)
+			break
+		}
+	}
+	f.FList = append(f.FList, node)
 }
 
 func (f *pathFinder) nodeRule(p pos) bool {
@@ -107,6 +115,8 @@ func (f *pathFinder) nodeRule(p pos) bool {
 		if v.getGuessCost(f.endPos) < f.node.getGuessCost(f.endPos) {
 			v.lastNode = f.node
 			v.setCost()
+			v.f = v.cost + v.getGuessCost(f.endPos)
+			f.flistRefrsh(v)
 		}
 		return false
 	}
