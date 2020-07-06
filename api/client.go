@@ -55,7 +55,7 @@ func NewClient() (client *Client) {
 			if p == nil {
 				continue
 			}
-			if client == nil || client.Native == nil || !client.connected {
+			if client == nil || client.Native == nil || client.Native.Conn() == nil {
 				continue
 			}
 			_ = client.Native.SendPacket(*p)
@@ -106,7 +106,7 @@ func NewClient() (client *Client) {
 						go func() {
 							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 							time.Sleep(5 * time.Second)
-							client.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 						}()
 					}
 					break
