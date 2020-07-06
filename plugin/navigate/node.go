@@ -49,7 +49,7 @@ func (n *node) getCost() uint16 {
 }
 
 func (n *node) getGuessCost(end pos) uint16 {
-	return 256 * (simpleAbs(end.x-n.pos.x) + simpleAbs(end.y-n.pos.y) + simpleAbs(end.z-n.pos.z))
+	return 350 * (simpleAbs(end.x-n.pos.x) + simpleAbs(end.y-n.pos.y) + simpleAbs(end.z-n.pos.z))
 }
 
 func (n *node) returnNodes(nodes []*node) []*node {
