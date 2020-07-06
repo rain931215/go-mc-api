@@ -51,12 +51,14 @@ func NewClient() (client *Client) {
 	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.packetChannel.inStatusChannel = make(chan error, 1)
 	go func() {
-		for {
-			p := <-client.packetChannel.outChannel
-			if p == nil || client.Native.Conn() == nil {
+		for p := range client.packetChannel.outChannel {
+			if p == nil {
 				continue
 			}
-			_ = client.Native.Conn().WritePacket(*p)
+			if client == nil || client.Native == nil || client.Native.Conn() == nil {
+				continue
+			}
+			_ = client.Native.SendPacket(*p)
 		}
 	}()
 	go func() {
@@ -76,9 +78,8 @@ func NewClient() (client *Client) {
 				twoBreak := false
 				switch p.ID {
 				case 0x1b: // 0x1b = Disconnect (play) https://wiki.vg/Protocol#Disconnect_.28play.29
-					buffedReader := bufio.NewReader(bytes.NewReader(p.Data))
 					var msg chat.Message
-					if msg.Decode(buffedReader) == nil {
+					if msg.Decode(bufio.NewReader(bytes.NewReader(p.Data))) == nil {
 						//TODO (Async Events)
 						if client.Event.disconnectHandlers == nil || len(client.Event.disconnectHandlers) < 1 {
 							break
@@ -100,10 +101,13 @@ func NewClient() (client *Client) {
 					twoBreak = true
 					break
 				case data.KeepAliveClientbound:
-					buffedReader := bufio.NewReader(bytes.NewReader(p.Data))
 					var ID pk.Long
-					if err := ID.Decode(buffedReader); err == nil {
-						_ = client.Native.Conn().WritePacket(pk.Marshal(data.KeepAliveServerbound, ID))
+					if err := ID.Decode(bufio.NewReader(bytes.NewReader(p.Data))); err == nil {
+						go func() {
+							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+							time.Sleep(5 * time.Second)
+							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+						}()
 					}
 					break
 				default:
