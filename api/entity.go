@@ -35,7 +35,10 @@ func (list *EntityList) GetEntityByID(entityID int32) *BaseEntity {
 	return nil
 }
 func (list *EntityList) GetAllEntities() []*BaseEntity {
-	entitiesList := make([]*BaseEntity, list.hashMap.Len())
+	if list == nil || list.hashMap == nil {
+		return nil
+	}
+	entitiesList := make([]*BaseEntity, list.hashMap.Len()/2)
 	for entity := range list.hashMap.Iter() {
 		if value, ok := entity.Value.(*BaseEntity); ok {
 			entitiesList = append(entitiesList, value)
