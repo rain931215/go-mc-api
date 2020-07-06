@@ -48,26 +48,18 @@ func (f *pathFinder) getNodes() []*node {
 	}
 	tempCount := 0
 	for {
+		tempCount++
 		if len(f.FList) < 1 {
 			println("wrong")
 			return make([]*node, 1)
 		}
-		/*
-			f.node = f.FList[0]
-			f.FList = f.FList[1:]
-		*/
-		var FList []*node
-		for _, node := range f.openNodeList {
-			FList = append(FList, node)
-		}
-		f.node = min(FList)
-
+		f.node = f.FList[0]
+		fmt.Println(tempCount, f.node)
+		f.FList = f.FList[1:]
 		if f.node.pos == f.endPos {
 			println("finish")
-			return f.node.returnNodes([]*node{f.node, f.node})
+			return f.node.returnNodes([]*node{f.node})
 		}
-		tempCount++
-		fmt.Println(tempCount)
 		delete(f.openNodeList, f.node.pos)
 		f.closeNodeList[f.node.pos] = f.node
 		for offSet := -1; offSet < 2; offSet += 2 {
@@ -94,15 +86,13 @@ func (f *pathFinder) openNewNode(p pos) {
 
 // 從小到大排序
 func (f *pathFinder) fListInsert(nodeToInsert *node) {
-	/*
-			for i := 0; i < len(f.FList); i++ {
-				if nodeToInsert.f == f.FList[i].f || nodeToInsert.f < f.FList[i].f {
-					f.FList = append(append(f.FList[:i], nodeToInsert), f.FList[i:]...)
-					return
-				}
-			}
-		f.FList = append(f.FList, nodeToInsert)
-	*/
+	for i := 0; i < len(f.FList); i++ {
+		if nodeToInsert.f == f.FList[i].f || nodeToInsert.f < f.FList[i].f {
+			f.FList = append(append(f.FList[:i], nodeToInsert), f.FList[i:]...)
+			return
+		}
+	}
+	f.FList = append(f.FList, nodeToInsert)
 }
 
 // 節點判斷
@@ -116,7 +106,7 @@ func (f *pathFinder) nodeRule(p pos) bool {
 			v.lastNode = f.node
 			v.setCost()
 			v.f = v.cost + v.getGuessCost(f.endPos)
-			//f.fListInsert(v)
+			f.fListInsert(v)
 		}
 		return false
 	}
@@ -134,7 +124,7 @@ func (f *pathFinder) nodeRule(p pos) bool {
 	return false
 }
 
-func min(l []*node) (min *node) {
+/*func min(l []*node) (min *node) {
 	min = l[0]
 	for _, v := range l {
 		if v.f < min.f {
@@ -142,7 +132,7 @@ func min(l []*node) (min *node) {
 		}
 	}
 	return
-}
+}*/
 
 func (f *pathFinder) getBlock(pos1 pos) uint32 {
 	return uint32(f.c.World.GetBlockStatus(pos1.x, pos1.y, pos1.z))

@@ -63,7 +63,7 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 	t := time.Now().UnixNano()
 	nodes := f.getNodes()
 	println((time.Now().UnixNano() - t) / 1000000)
-	for i := len(nodes) - 1; i != 0; i-- {
+	for i := len(nodes) - 1; i > 0; i-- {
 
 		dx := originalX + float64(nodes[i].pos.x)
 		dy := originalY + float64(nodes[i].pos.y)
