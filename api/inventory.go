@@ -1,12 +1,7 @@
 package api
 
-import (
-	"sync"
-)
-
 type inventory struct {
 	itemStacks [46]ItemStack // 背包總共有46格
-	lock       sync.Mutex    // 同步鎖
 }
 type ItemStack struct {
 	id    uint32                 // 物品ID
@@ -25,9 +20,7 @@ func (inv *inventory) GetSlotItemStack(slot int) (item *ItemStack) {
 	if inv == nil {
 		return &ItemStack{}
 	}
-	inv.lock.Lock()
 	item = &inv.itemStacks[slot]
-	inv.lock.Unlock()
 	return
 }
 func (stack *ItemStack) GetID() uint32 {
