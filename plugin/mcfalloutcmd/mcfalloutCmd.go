@@ -63,7 +63,7 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 			for i := 0; i < len(p.cmdList); i++ {
 				if args[0] == p.cmdList[i].name {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
-					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args)
+					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args[1:])
 					break
 				}
 			}
