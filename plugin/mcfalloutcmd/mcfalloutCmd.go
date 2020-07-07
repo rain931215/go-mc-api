@@ -64,10 +64,17 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 				if args[0] == p.cmdList[i].name {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
 					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args[1:])
-					break
+					return false, nil
 				}
 			}
 			break
+		}
+		if text == "[廢土伺服] : "+p.whiteList[id]+" 想要傳送到 你 的位置" {
+			p.Client.Chat("/tok")
+			return false, nil
+		} else if text == "[廢土伺服] : "+p.whiteList[id]+" 想要你傳送到 該玩家 的位置!" {
+			p.Client.Chat("/tok")
+			return false, nil
 		}
 	}
 	return false, nil
