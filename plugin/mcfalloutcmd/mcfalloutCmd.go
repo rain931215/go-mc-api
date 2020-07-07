@@ -64,10 +64,10 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
 					args := strings.Split(text, " ")
 					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args)
-					return false, nil
+					break
 				}
 			}
-			return false, nil
+			break
 		}
 	}
 	return false, nil

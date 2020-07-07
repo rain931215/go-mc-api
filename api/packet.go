@@ -18,60 +18,45 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	if p == nil {
 		return nil
 	}
-	go func() {
-		//TODO (Async Events)
-		if c.Event.packetHandlers != nil && len(c.Event.packetHandlers) >= 1 {
-			for _, v := range c.Event.packetHandlers {
-				if v == nil {
-					continue
-				}
-				pass, err := v(p)
-				if err != nil || pass {
-					break
-				}
+	//TODO (Async Events)
+	if len(c.Event.packetHandlers) >= 1 {
+		for _, v := range c.Event.packetHandlers {
+			if v == nil {
+				continue
+			}
+			pass, err := v(p)
+			if err != nil || pass {
+				break
 			}
 		}
-	}()
+	}
 	switch p.ID {
 	case data.ChatMessageClientbound:
-		go c.handleChatPacket(p)
-		break
+		return c.handleChatPacket(p)
 	case data.Title:
-		go c.handleTitlePacket(p)
-		break
+		return c.handleTitlePacket(p)
 	case data.BlockChange:
-		go c.handleBlockChangePacket(p)
-		break
+		return c.handleBlockChangePacket(p)
 	case data.MultiBlockChange:
-		go c.handleMultiBlockChangePacket(p)
-		break
+		return c.handleMultiBlockChangePacket(p)
 	case data.PlayerPositionAndLookClientbound:
-		go c.handleMoveAndRotationPacket(p)
-		break
+		return c.handleMoveAndRotationPacket(p)
 	case data.ChunkData:
-		go c.handleLoadChunkPacket(p)
-		break
+		return c.handleLoadChunkPacket(p)
 	case data.SetSlot:
-		go c.handleSetSlotPacket(p)
-		break
+		return c.handleSetSlotPacket(p)
 	case data.TimeUpdate:
-		go c.handleTimeUpdatePacket(p)
-		break
+		return c.handleTimeUpdatePacket(p)
 	case data.SpawnMob:
-		go c.handleSpawnMobPacket(p)
-		break
+		return c.handleSpawnMobPacket(p)
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
-		go c.handleEntityLocationUpdatePacket(p)
-		break
+		return c.handleEntityLocationUpdatePacket(p)
 	case data.EntityTeleport:
-		go c.handleEntityTeLePortPacket(p)
-		break
+		return c.handleEntityTeLePortPacket(p)
 	case data.DestroyEntities:
-		go c.handleRemoveEntityPacket(p)
-		break
+		return c.handleRemoveEntityPacket(p)
 	case data.UnloadChunk:
-		go c.handleUnlockChunk(p)
-		break
+		return c.handleUnlockChunk(p)
 	}
 	return nil
 }
@@ -85,11 +70,9 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 		return err
 	}
 	if c.Inventory != nil && windowID == 0 { // 更新背包
-		c.Inventory.lock.Lock()
 		c.Inventory.itemStacks[slot] = ItemStack{id: uint32(slotData.ItemID), count: int(slotData.Count), nbt: nil} //TODO(Need improve nbt)
-		c.Inventory.lock.Unlock()
 	}
-	if c.Event.setSlotHandlers == nil || len(c.Event.setSlotHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
+	if len(c.Event.setSlotHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	for _, v := range c.Event.setSlotHandlers {
@@ -107,7 +90,7 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
-	if c.Event.timeUpdateHandlers == nil || len(c.Event.timeUpdateHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
+	if len(c.Event.timeUpdateHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	var age, timeOfDay pk.Long
@@ -129,7 +112,7 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleChatPacket(p *pk.Packet) error {
-	if c.Event.chatHandlers == nil || len(c.Event.chatHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
+	if len(c.Event.chatHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	var msg chat.Message
@@ -150,7 +133,7 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 	return nil
 }
 func (c *Client) handleTitlePacket(p *pk.Packet) error {
-	if c.Event.titleHandlers == nil || len(c.Event.titleHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
+	if len(c.Event.titleHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
 	var (
