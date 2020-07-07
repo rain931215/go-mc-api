@@ -1,7 +1,6 @@
 package navigate
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/rain931215/go-mc-api/api"
@@ -60,7 +59,9 @@ func (f *pathFinder) getNodes() []*node {
 			return f.node.returnNodes([]*node{f.node, f.node})
 		}
 		tempCount++
-		fmt.Println(tempCount)
+		if tempCount > 200000 {
+			return make([]*node, 1)
+		}
 		delete(f.openNodeList, f.node.pos)
 		f.closeNodeList[f.node.pos] = f.node
 
