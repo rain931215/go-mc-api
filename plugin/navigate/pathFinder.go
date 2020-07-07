@@ -88,7 +88,6 @@ func (f *pathFinder) openNewNode(p pos) {
 
 // 從小到大排序
 func (f *pathFinder) fListInsert(nodeToInsert *node) {
-
 	for i := 0; i < len(f.FList); i++ {
 		if nodeToInsert.f == f.FList[i].f || nodeToInsert.f < f.FList[i].f {
 			f.FList = append(f.FList[:i], append([]*node{nodeToInsert}, f.FList[i:]...)...)
@@ -98,11 +97,11 @@ func (f *pathFinder) fListInsert(nodeToInsert *node) {
 	f.FList = append(f.FList, nodeToInsert)
 }
 
+// 清除已存在的node
 func (f *pathFinder) clearNode(nodeToClear *node) {
 	for i := 0; i < len(f.FList); i++ {
 		if nodeToClear.pos == f.FList[i].pos {
 			f.FList = append(f.FList[:i], f.FList[i+1:]...)
-			println("clear")
 			return
 		}
 	}
@@ -114,6 +113,7 @@ func (f *pathFinder) nodeRule(p pos) bool {
 	if _, ok := f.closeNodeList[p]; ok {
 		return false
 	}
+
 	if v, ok := f.openNodeList[p]; ok {
 		if v.getGuessCost(f.endPos) < f.node.getGuessCost(f.endPos) {
 			v.lastNode = f.node
@@ -124,6 +124,7 @@ func (f *pathFinder) nodeRule(p pos) bool {
 		}
 		return false
 	}
+
 	// 得出絕對座標
 	x := f.startPointX + p.x
 	y := f.startPointY + p.y
