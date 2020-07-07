@@ -61,10 +61,9 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 	p.c.Move(originalX, originalY, originalZ, false)
 	f := setNewPath(x, y, z, p.c)
 	t := time.Now().UnixNano()
-	nodes := f.getNodes()
+	nodes := sortNodes(f.getNodes())
 	println((time.Now().UnixNano() - t) / 1000000)
 	for i := len(nodes) - 1; i != 0; i-- {
-
 		dx := originalX + float64(nodes[i].pos.x)
 		dy := originalY + float64(nodes[i].pos.y)
 		dz := originalZ + float64(nodes[i].pos.z)
@@ -72,4 +71,36 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 		p.c.Move(dx, dy, dz, false)
 		time.Sleep(30 * time.Millisecond)
 	}
+}
+
+func sortNodes(nodes []*node) []*node {
+	var (
+		result           []*node
+		count, stepCount uint8
+	)
+	if len(nodes) < 2 {
+		return nodes
+	}
+	result = append(result, nodes[0])
+	result = append(result, nodes[1])
+	for i := 1; i < len(nodes)-1; i++ {
+		count = 0
+		if nodes[i-1].pos.x != nodes[i+1].pos.x {
+			count++
+		}
+		if nodes[i-1].pos.y != nodes[i+1].pos.y {
+			count++
+		}
+		if nodes[i-1].pos.z != nodes[i+1].pos.z {
+			count++
+		}
+		if count != 1 || stepCount > 8 {
+			result = append(result, nodes[i])
+			stepCount = 0
+		} else {
+			stepCount++
+		}
+	}
+	result = append(result, nodes[len(nodes)-1])
+	return result
 }
