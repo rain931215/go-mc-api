@@ -59,10 +59,10 @@ func (p *McfalloutCmd) main(msg chat.Message) (bool, error) {
 	for id := 0; id < len(p.whiteList); id++ {
 		if strings.Index(text, "[收到私訊 "+p.whiteList[id]) == 0 {
 			text = strings.TrimPrefix(text, "[收到私訊 "+p.whiteList[id]+"] : ")
+			args := strings.Split(text, " ")
 			for i := 0; i < len(p.cmdList); i++ {
-				if strings.Index(text, p.cmdList[i].name+" ") == 0 {
+				if args[0] == p.cmdList[i].name {
 					text = strings.TrimPrefix(text, p.cmdList[i].name+" ")
-					args := strings.Split(text, " ")
 					p.cmdList[i].method(p.Client, p.cmdList[i].name, text, args)
 					break
 				}
