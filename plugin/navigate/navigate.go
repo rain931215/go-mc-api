@@ -1,8 +1,10 @@
 package navigate
 
 import (
+	"fmt"
 	"math"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rain931215/go-mc-api/api"
@@ -59,17 +61,63 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 	originalY := math.Floor(p.c.GetY())
 	originalZ := math.Floor(p.c.GetZ()) + 0.5
 	p.c.Move(originalX, originalY, originalZ, false)
-	f := setNewPath(x, y, z, p.c)
+
+	fmt.Println(p.c.GetX(), p.c.GetY(), p.c.GetZ(), x, y, z)
+	finder1 := setNewPath(p.c, p.c.GetX(), p.c.GetY(), p.c.GetZ(), x, y, z)
+	finder2 := setNewPath(p.c, x, y, z, p.c.GetX(), p.c.GetY(), p.c.GetZ())
+	var (
+		successNodes []*node
+		wait         sync.WaitGroup
+		reverse      bool
+	)
 	t := time.Now().UnixNano()
-	nodes := sortNodes(f.getNodes())
+	wait.Add(2)
+	go func() {
+		pass, nodes := finder1.getNodes()
+		finder2.stop()
+		if pass {
+			fmt.Println("正向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
+			successNodes = nodes
+		} else {
+			finder2.stop()
+		}
+		wait.Done()
+	}()
+	go func() {
+		pass, nodes := finder2.getNodes()
+		finder1.stop()
+		if pass {
+			fmt.Println("反向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
+			for i, j := 0, len(nodes)-1; i < j; i, j = i+1, j-1 {
+				nodes[i], nodes[j] = nodes[j], nodes[i]
+			}
+			successNodes = nodes
+			reverse = true
+		}
+		wait.Done()
+	}()
+	wait.Wait()
 	println((time.Now().UnixNano() - t) / 1000000)
-	for i := len(nodes) - 1; i != 0; i-- {
-		dx := originalX + float64(nodes[i].pos.x)
-		dy := originalY + float64(nodes[i].pos.y)
-		dz := originalZ + float64(nodes[i].pos.z)
-		//log.Println(dx, dy, dz)
-		p.c.Move(dx, dy, dz, false)
-		time.Sleep(30 * time.Millisecond)
+	if len(successNodes) > 0 {
+		fmt.Println("成功尋找到路徑 長度:" + strconv.Itoa(len(successNodes)) + "方塊")
+		nodes := sortNodes(successNodes)
+		for i := len(nodes) - 1; i != 0; i-- {
+			var dx, dy, dz float64
+			//log.Println(dx, dy, dz)
+			if reverse {
+				dx = x + float64(nodes[i].pos.x)
+				dy = y + float64(nodes[i].pos.y)
+				dz = z + float64(nodes[i].pos.z)
+			} else {
+				dx = originalX + float64(nodes[i].pos.x)
+				dy = originalY + float64(nodes[i].pos.y)
+				dz = originalZ + float64(nodes[i].pos.z)
+			}
+			p.c.Move(dx, dy, dz, false)
+			time.Sleep(30 * time.Millisecond)
+		}
+	} else {
+		fmt.Println("找不到路徑")
 	}
 }
 
