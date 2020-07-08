@@ -8,6 +8,7 @@ import (
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
 	pk "github.com/Tnze/go-mc/net/packet"
+	"github.com/enriquebris/goconcurrentqueue"
 	"github.com/rain931215/go-mc-api/api/world"
 	"net"
 	"time"
@@ -23,12 +24,13 @@ type Client struct {
 	Auth       *AuthInfo
 	EntityList *EntityList
 	*Position
-	packetChannel struct {
-		outChannel      chan *pk.Packet
-		inStatusChannel chan error
-	}
-	Event Events
+	packetOutStream *goconcurrentqueue.FixedFIFO
+	inStatusChannel chan error
+	Event           Events
 	Status
+	/*packetChannel   struct {
+		//outChannel      chan *pk.Packet
+	}*/
 }
 type Status struct {
 	connected bool
@@ -48,17 +50,19 @@ func NewClient() (client *Client) {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
-	client.packetChannel.inStatusChannel = make(chan error, 1)
+	client.packetOutStream = goconcurrentqueue.NewFixedFIFO(200)
+	//client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
+	client.inStatusChannel = make(chan error, 1)
 	go func() {
-		for p := range client.packetChannel.outChannel {
-			if p == nil {
-				continue
+		for {
+			if obj, err := client.packetOutStream.DequeueOrWaitForNextElement(); err == nil {
+				if p, ok := obj.(*pk.Packet); ok && p != nil {
+					if client == nil || client.Native == nil || client.Native.Conn() == nil {
+						continue
+					}
+					_ = client.Native.SendPacket(*p)
+				}
 			}
-			if client == nil || client.Native == nil || client.Native.Conn() == nil {
-				continue
-			}
-			_ = client.Native.SendPacket(*p)
 		}
 	}()
 	go func() {
@@ -66,7 +70,7 @@ func NewClient() (client *Client) {
 			incomeErr error
 		)
 		for {
-			<-client.packetChannel.inStatusChannel
+			<-client.inStatusChannel
 			client.Status.connected = true // 設定連線狀態
 			for {
 				incomeErr = nil
@@ -122,7 +126,7 @@ func NewClient() (client *Client) {
 				}
 			}
 			client.Status.connected = false // 設定連線狀態
-			client.packetChannel.inStatusChannel <- incomeErr
+			client.inStatusChannel <- incomeErr
 		}
 	}()
 	return
@@ -130,7 +134,7 @@ func NewClient() (client *Client) {
 
 // 加入伺服器
 func (c *Client) JoinServer(ip string, port int) error {
-	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 120 * time.Second})
+	return c.JoinServerWithDialer(ip, port, &net.Dialer{Timeout: 30 * time.Second})
 }
 func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) error {
 	c.Native.Name, c.Native.Auth.UUID, c.Native.AsTk = c.Auth.ID, c.Auth.UUID, c.Auth.AccessToken
@@ -140,14 +144,15 @@ func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) e
 	return c.Native.JoinServerWithDialer(dialer, fmt.Sprintf("%s:%d", ip, port))
 }
 func (c *Client) HandleGame() error {
-	c.packetChannel.inStatusChannel <- nil
-	return <-c.packetChannel.inStatusChannel
+	c.inStatusChannel <- nil
+	return <-c.inStatusChannel
 }
 func (c *Client) SendPacket(packet pk.Packet) {
-	if c.packetChannel.outChannel == nil {
+	if c.packetOutStream == nil {
 		return
+	} else if err := c.packetOutStream.Enqueue(&packet); err != nil {
+		fmt.Println(fmt.Sprintf("Enqueue packet error: %v", err))
 	}
-	c.packetChannel.outChannel <- &packet
 }
 func (c *Client) Connected() bool {
 	return c.Status.connected
