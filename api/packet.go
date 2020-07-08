@@ -59,6 +59,32 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleRemoveEntityPacket(p)
 	case data.UnloadChunk:
 		return c.handleUnlockChunk(p)
+	case data.UpdateHealth:
+		return c.handleHealthChangePacket(p)
+	}
+	return nil
+}
+func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
+	if len(c.Event.dieHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
+		return nil
+	}
+	var Health pk.Float
+	if err := ScanFields(p, &Health); err != nil {
+		return err
+	}
+	if Health <= 0 { // 死亡
+		for _, v := range c.Event.dieHandlers {
+			if v == nil {
+				continue
+			}
+			pass, err := v()
+			if err != nil {
+				return errors.New("Die event error" + err.Error())
+			}
+			if pass {
+				break
+			}
+		}
 	}
 	return nil
 }
