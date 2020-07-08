@@ -27,13 +27,7 @@ type Client struct {
 	packetOutStream *goconcurrentqueue.FixedFIFO
 	inStatusChannel chan error
 	Event           Events
-	Status
-	/*packetChannel   struct {
-		//outChannel      chan *pk.Packet
-	}*/
-}
-type Status struct {
-	connected bool
+	connected       bool
 }
 
 type AuthInfo struct {
@@ -50,7 +44,7 @@ func NewClient() (client *Client) {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetOutStream = goconcurrentqueue.NewFixedFIFO(200)
+	client.packetOutStream = goconcurrentqueue.NewFixedFIFO(bufferPacketChannelSize)
 	//client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.inStatusChannel = make(chan error, 1)
 	go func() {
@@ -71,7 +65,7 @@ func NewClient() (client *Client) {
 		)
 		for {
 			<-client.inStatusChannel
-			client.Status.connected = true // 設定連線狀態
+			client.connected = true // 設定連線狀態
 			for {
 				incomeErr = nil
 				p, err := client.Native.Conn().ReadPacket()
@@ -125,7 +119,7 @@ func NewClient() (client *Client) {
 					break
 				}
 			}
-			client.Status.connected = false // 設定連線狀態
+			client.connected = false // 設定連線狀態
 			client.inStatusChannel <- incomeErr
 		}
 	}()
@@ -155,5 +149,5 @@ func (c *Client) SendPacket(packet pk.Packet) {
 	}
 }
 func (c *Client) Connected() bool {
-	return c.Status.connected
+	return c.connected
 }
