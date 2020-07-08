@@ -47,6 +47,8 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleSetSlotPacket(p)
 	case data.TimeUpdate:
 		return c.handleTimeUpdatePacket(p)
+	case data.SpawnPlayer:
+		return c.handleSpawnPlayerPacket(p)
 	case data.SpawnMob:
 		return c.handleSpawnMobPacket(p)
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
@@ -254,6 +256,28 @@ func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
 	} else {
 		c.SetPitch(c.GetPitch() + float32(pitch))
 	}
+	return nil
+}
+func (c *Client) handleSpawnPlayerPacket(p *pk.Packet) error {
+	if c.EntityList == nil || c.EntityList.hashMap == nil {
+		return nil
+	}
+	var (
+		eID     pk.VarInt
+		eUUID   pk.UUID
+		x, y, z pk.Double
+	)
+	if err := ScanFields(p, &eID, &eUUID, &x, &y, &z); err != nil {
+		return err
+	}
+	newEntity := new(BaseEntity)
+	newEntity.eID = int32(eID)
+	newEntity.eType = 101
+	newEntity.eUUID = uuid.UUID(eUUID)
+	newEntity.eX = float64(x)
+	newEntity.eY = float64(y)
+	newEntity.eZ = float64(z)
+	c.EntityList.hashMap.Set(int32(eID), newEntity)
 	return nil
 }
 func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {

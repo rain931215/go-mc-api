@@ -62,7 +62,6 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 	originalZ := math.Floor(p.c.GetZ()) + 0.5
 	p.c.Move(originalX, originalY, originalZ, false)
 
-	fmt.Println(p.c.GetX(), p.c.GetY(), p.c.GetZ(), x, y, z)
 	finder1 := setNewPath(p.c, p.c.GetX(), p.c.GetY(), p.c.GetZ(), x, y, z)
 	finder2 := setNewPath(p.c, x, y, z, p.c.GetX(), p.c.GetY(), p.c.GetZ())
 	var (
