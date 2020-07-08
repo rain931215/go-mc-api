@@ -2,7 +2,6 @@ package api
 
 import (
 	"github.com/cornelk/hashmap"
-	"github.com/google/uuid"
 )
 
 type EntityList struct {
@@ -11,7 +10,7 @@ type EntityList struct {
 
 type BaseEntity struct {
 	eID        int32
-	eUUID      uuid.UUID
+	eUUID      string
 	eType      int32
 	eX, eY, eZ float64
 	//eYaw, ePitch                       float32
@@ -63,9 +62,9 @@ func (entity *BaseEntity) GetType() (eType int32) {
 	eType = entity.eType
 	return
 }
-func (entity *BaseEntity) GetUUID() (id uuid.UUID) {
+func (entity *BaseEntity) GetUUID() (id string) {
 	if entity == nil {
-		return uuid.UUID{}
+		return ""
 	}
 	id = entity.eUUID
 	return

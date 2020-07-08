@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/Tnze/go-mc/bot/world/entity"
@@ -10,7 +11,6 @@ import (
 	"github.com/Tnze/go-mc/data"
 	"github.com/Tnze/go-mc/nbt"
 	pk "github.com/Tnze/go-mc/net/packet"
-	"github.com/google/uuid"
 	"github.com/rain931215/go-mc-api/api/world"
 )
 
@@ -273,7 +273,7 @@ func (c *Client) handleSpawnPlayerPacket(p *pk.Packet) error {
 	newEntity := new(BaseEntity)
 	newEntity.eID = int32(eID)
 	newEntity.eType = 101
-	newEntity.eUUID = uuid.UUID(eUUID)
+	newEntity.eUUID = hex.EncodeToString(eUUID[:])
 	newEntity.eX = float64(x)
 	newEntity.eY = float64(y)
 	newEntity.eZ = float64(z)
@@ -296,7 +296,7 @@ func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {
 	newEntity := new(BaseEntity)
 	newEntity.eID = int32(eID)
 	newEntity.eType = int32(eType)
-	newEntity.eUUID = uuid.UUID(eUUID)
+	newEntity.eUUID = hex.EncodeToString(eUUID[:])
 	newEntity.eX = float64(x)
 	newEntity.eY = float64(y)
 	newEntity.eZ = float64(z)
