@@ -57,8 +57,8 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleEntityTeLePortPacket(p)
 	case data.DestroyEntities:
 		return c.handleRemoveEntityPacket(p)
-		/*case data.UnloadChunk:
-		return c.handleUnlockChunk(p)*/
+	case data.UnloadChunk:
+		return c.handleUnlockChunk(p)
 	}
 	return nil
 }
