@@ -1,5 +1,7 @@
 package api
 
+import "github.com/rain931215/go-mc-api/data"
+
 type inventory struct {
 	itemStacks [46]ItemStack // 背包總共有46格
 }
@@ -46,4 +48,21 @@ func (stack *ItemStack) GetNBT() map[string]interface{} {
 		return map[string]interface{}{}
 	}
 	return stack.nbt
+}
+func (inv *inventory) GetItem(itemName string) (int, []int) {
+	var (
+		amount int
+		slots  []int
+	)
+	if inv == nil {
+		return amount, slots
+	}
+	for i := 9; i < 45; i++ {
+		if data.ItemNameByID[inv.itemStacks[i].id] == itemName {
+			slots = append(slots, i)
+			amount += inv.itemStacks[i].count
+		}
+	}
+
+	return amount, slots
 }
