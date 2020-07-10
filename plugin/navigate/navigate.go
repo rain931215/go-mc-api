@@ -51,12 +51,12 @@ func New(cmdHandler *mcfalloutcmd.McfalloutCmd) *Navigate {
 }
 
 //Move _
-func (p *Navigate) Move(x, y, z float64) {
-	p.MoveTo(p.c.GetX()+x, p.c.GetY()+y, p.c.GetZ()+z)
+func (p *Navigate) Move(x, y, z float64) bool {
+	return p.MoveTo(p.c.GetX()+x, p.c.GetY()+y, p.c.GetZ()+z)
 }
 
 //MoveTo _
-func (p *Navigate) MoveTo(x, y, z float64) {
+func (p *Navigate) MoveTo(x, y, z float64) bool {
 	originalX := math.Floor(p.c.GetX()) + 0.5
 	originalY := math.Floor(p.c.GetY())
 	originalZ := math.Floor(p.c.GetZ()) + 0.5
@@ -115,8 +115,10 @@ func (p *Navigate) MoveTo(x, y, z float64) {
 			p.c.Move(dx, dy, dz, false)
 			time.Sleep(30 * time.Millisecond)
 		}
+		return true
 	} else {
 		fmt.Println("找不到路徑")
+		return false
 	}
 }
 
