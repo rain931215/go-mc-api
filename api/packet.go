@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/hex"
 	"errors"
@@ -374,7 +373,7 @@ func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r     = bufio.NewReader(bytes.NewReader(p.Data))
+		r     = bytes.NewBuffer(p.Data)
 		count pk.VarInt
 	)
 	if err := count.Decode(r); err != nil {
@@ -463,8 +462,10 @@ func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
 	for _, v := range fields {
 		err := v.Decode(r)
 		if err != nil {
+			r = nil
 			return err
 		}
 	}
+	r = nil
 	return nil
 }
