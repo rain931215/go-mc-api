@@ -18,7 +18,6 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	if p == nil {
 		return nil
 	}
-	//TODO (Async Events)
 	if len(c.Event.packetHandlers) >= 1 {
 		for _, v := range c.Event.packetHandlers {
 			if v == nil {
@@ -61,8 +60,9 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleUnlockChunk(p)
 	case data.UpdateHealth:
 		return c.handleHealthChangePacket(p)
+	default:
+		return nil
 	}
-	return nil
 }
 func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 	if len(c.Event.dieHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
@@ -211,7 +211,7 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r      = bufio.NewReader(bytes.NewReader(p.Data))
+		r      = bytes.NewBuffer(p.Data)
 		cX, cY pk.Int
 		count  pk.VarInt
 	)
@@ -415,7 +415,7 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 		Biomes         = biomesData{fullChunk: (*bool)(&FullChunk)}
 		Data           chunkData
 	)
-	if err := p.Scan(&X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
+	if err := ScanFields(p, &X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
 		return err
 	}
 	chunk, err := world.DecodeChunkColumn(int32(PrimaryBitMask), Data)
@@ -459,7 +459,7 @@ func (c *chunkData) Decode(r pk.DecodeReader) error {
 	return nil
 }
 func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
-	r := bufio.NewReader(bytes.NewReader(p.Data))
+	r := bytes.NewBuffer(p.Data)
 	for _, v := range fields {
 		err := v.Decode(r)
 		if err != nil {

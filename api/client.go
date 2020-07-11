@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/Tnze/go-mc/bot"
@@ -14,7 +13,7 @@ import (
 	"time"
 )
 
-const bufferPacketChannelSize int = 300
+const bufferPacketChannelSize int = 100
 
 // 改寫的客戶端結構
 type Client struct {
@@ -45,7 +44,6 @@ func NewClient() (client *Client) {
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	client.packetOutStream = goconcurrentqueue.NewFixedFIFO(bufferPacketChannelSize)
-	//client.packetChannel.outChannel = make(chan *pk.Packet, bufferPacketChannelSize)
 	client.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
@@ -60,9 +58,7 @@ func NewClient() (client *Client) {
 		}
 	}()
 	go func() {
-		var (
-			incomeErr error
-		)
+		var incomeErr error
 		for {
 			<-client.inStatusChannel
 			client.connected = true // 設定連線狀態
@@ -77,9 +73,8 @@ func NewClient() (client *Client) {
 				switch p.ID {
 				case 0x1b: // 0x1b = Disconnect (play) https://wiki.vg/Protocol#Disconnect_.28play.29
 					var msg chat.Message
-					if msg.Decode(bufio.NewReader(bytes.NewReader(p.Data))) == nil {
-						//TODO (Async Events)
-						if client.Event.disconnectHandlers == nil || len(client.Event.disconnectHandlers) < 1 {
+					if msg.Decode(bytes.NewBuffer(p.Data)) == nil {
+						if len(client.Event.disconnectHandlers) < 1 {
 							break
 						}
 						for _, v := range client.Event.disconnectHandlers {
@@ -100,10 +95,10 @@ func NewClient() (client *Client) {
 					break
 				case data.KeepAliveClientbound:
 					var ID pk.Long
-					if err := ID.Decode(bufio.NewReader(bytes.NewReader(p.Data))); err == nil {
+					if ID.Decode(bytes.NewReader(p.Data)) == nil {
 						go func() {
 							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
-							time.Sleep(5 * time.Second)
+							time.Sleep(3 * time.Second)
 							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
 						}()
 					}
