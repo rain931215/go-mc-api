@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const bufferPacketChannelSize int = 100
+//const bufferPacketChannelSize int = 100
 
 // 改寫的客戶端結構
 type Client struct {
@@ -23,7 +23,7 @@ type Client struct {
 	Auth       *AuthInfo
 	EntityList *EntityList
 	*Position
-	packetOutStream *goconcurrentqueue.FixedFIFO
+	packetOutStream *goconcurrentqueue.FIFO
 	inStatusChannel chan error
 	Event           Events
 	connected       bool
@@ -43,7 +43,7 @@ func NewClient() (client *Client) {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetOutStream = goconcurrentqueue.NewFixedFIFO(bufferPacketChannelSize)
+	client.packetOutStream = goconcurrentqueue.NewFIFO()
 	client.inStatusChannel = make(chan error, 1)
 	go func() {
 		for {
