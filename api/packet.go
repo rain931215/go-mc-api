@@ -55,8 +55,8 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleEntityTeLePortPacket(p)
 	case data.DestroyEntities:
 		return c.handleRemoveEntityPacket(p)
-	case data.UnloadChunk:
-		return c.handleUnlockChunk(p)
+	/*case data.UnloadChunk:
+	return c.handleUnlockChunk(p)*/
 	case data.UpdateHealth:
 		return c.handleHealthChangePacket(p)
 	default:
@@ -217,10 +217,10 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 	if err := cX.Decode(r); err != nil {
 		return err
 	}
-	if err := cY.Decode(r); err == nil {
+	if err := cY.Decode(r); err != nil {
 		return err
 	}
-	if err := count.Decode(r); err == nil {
+	if err := count.Decode(r); err != nil {
 		return err
 	}
 	c.World.ChunkMapLock.Lock()
