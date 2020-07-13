@@ -54,7 +54,16 @@ func (p *Dirt) Start() {
 	}()
 }
 func (p *Dirt) dig(x, y, z int) {
-	if p.move(x, y+1, z) {
+	dx := p.c.GetX() - (float64(x) + 0.5)
+	dy := p.c.GetY() - (float64(y) + 0.5)
+	dz := p.c.GetZ() - (float64(z) + 0.5)
+	if (dx*dx)+(dy*dy)+(dz*dz) < 20 {
+		time.Sleep(time.Millisecond * 70)
+		p.c.ToggleFly(true)
+		p.c.StartBreakBlock(x, y, z, 0)
+		p.c.ToggleFly(false)
+		return
+	} else if p.move(x, y+1, z) {
 		time.Sleep(time.Millisecond * 50)
 		p.c.ToggleFly(true)
 		p.c.StartBreakBlock(x, y, z, 0)
@@ -62,11 +71,11 @@ func (p *Dirt) dig(x, y, z int) {
 	}
 }
 func (p *Dirt) move(x, y, z int) bool {
-	if !p.checkClaimStatus(x, y+2, z) {
-		p.setNewClaim(x, y+2, z)
+	if !p.checkClaimStatus(x, y, z) {
+		p.setNewClaim(x, y, z)
 		time.Sleep(time.Millisecond * 1000)
 	}
-	return p.navigate.MoveTo(float64(x)+0.5, float64(y)+2, float64(z)+0.5)
+	return p.navigate.MoveTo(float64(x)+0.5, float64(y), float64(z)+0.5)
 }
 func (p *Dirt) checkClaimStatus(x, y, z int) bool {
 	if abs(x-p.currentClaimCenter.x) > 7 {
