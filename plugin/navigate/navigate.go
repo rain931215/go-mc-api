@@ -1,7 +1,6 @@
 package navigate
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -69,13 +68,13 @@ func (p *Navigate) MoveTo(x, y, z float64) bool {
 		wait         sync.WaitGroup
 		reverse      bool
 	)
-	t := time.Now().UnixNano()
+	//t := time.Now().UnixNano()
 	wait.Add(2)
 	go func() {
 		pass, nodes := finder1.getNodes()
 		finder2.stop()
 		if pass {
-			fmt.Println("正向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
+			//fmt.Println("正向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
 			successNodes = nodes
 		} else {
 			finder2.stop()
@@ -86,7 +85,7 @@ func (p *Navigate) MoveTo(x, y, z float64) bool {
 		pass, nodes := finder2.getNodes()
 		finder1.stop()
 		if pass {
-			fmt.Println("反向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
+			//fmt.Println("反向搜尋完畢 方塊:" + strconv.Itoa(len(nodes)))
 			for i, j := 0, len(nodes)-1; i < j; i, j = i+1, j-1 {
 				nodes[i], nodes[j] = nodes[j], nodes[i]
 			}
@@ -96,9 +95,9 @@ func (p *Navigate) MoveTo(x, y, z float64) bool {
 		wait.Done()
 	}()
 	wait.Wait()
-	println((time.Now().UnixNano() - t) / 1000000)
+	//println((time.Now().UnixNano() - t) / 1000000)
 	if len(successNodes) > 0 {
-		fmt.Println("成功尋找到路徑 長度:" + strconv.Itoa(len(successNodes)) + "方塊")
+		//fmt.Println("成功尋找到路徑 長度:" + strconv.Itoa(len(successNodes)) + "方塊")
 		nodes := sortNodes(successNodes)
 		for i := len(nodes) - 1; i != 0; i-- {
 			var dx, dy, dz float64
@@ -117,7 +116,7 @@ func (p *Navigate) MoveTo(x, y, z float64) bool {
 		}
 		return true
 	} else {
-		fmt.Println("找不到路徑")
+		//fmt.Println("找不到路徑")
 		return false
 	}
 }
