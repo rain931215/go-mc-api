@@ -10,6 +10,10 @@ import (
 	"github.com/rain931215/go-mc-api/plugin/navigate"
 )
 
+type block struct {
+	pos  blockPos
+	cost uint
+}
 type blockPos struct {
 	x, y, z int
 }
@@ -19,8 +23,7 @@ type Dirt struct {
 	start              blockPos
 	currentClaimCenter blockPos
 	whiteList          []uint32
-	blocks             []*blockPos
-	blockMap           map[blockPos]bool
+	blocks             []*block
 }
 
 func New(c *api.Client, n *navigate.Navigate) *Dirt {
@@ -28,23 +31,23 @@ func New(c *api.Client, n *navigate.Navigate) *Dirt {
 }
 func (p *Dirt) Start() {
 	p.whiteList = []uint32{8, 9, 10, 11, 12, 13}
-	p.blockMap = make(map[blockPos]bool)
 	p.start.x, p.start.y, p.start.z = int(math.Floor(p.c.GetX())), int(math.Floor(p.c.GetY())), int(math.Floor(p.c.GetZ()))
 	p.currentClaimCenter = p.start
 	p.c.Move(math.Floor(p.c.GetX())+0.5, math.Floor(p.c.GetY()), math.Floor(p.c.GetZ())+0.5, false)
+	p.c.Chat("/delallc")
 	p.c.Chat("/claim")
+	p.refrshBlockList()
 	fmt.Println("Current Claim Pos: " + strconv.Itoa(p.currentClaimCenter.x) + " " + strconv.Itoa(p.currentClaimCenter.y) + " " + strconv.Itoa(p.currentClaimCenter.z))
 	time.Sleep(200 * time.Millisecond)
+	println(len(p.blocks))
 	go func() {
-		p.dig(p.start.x, p.start.y-1, p.start.z)
 		for {
 			if len(p.blocks) < 1 {
 				//rtp
-				//dig feet block
 				println("return")
 				return
 			}
-			p.dig(p.blocks[0].x, p.blocks[0].y, p.blocks[0].z)
+			p.dig(p.blocks[0].pos.x, p.blocks[0].pos.y, p.blocks[0].pos.z)
 			p.blocks = p.blocks[1:]
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -52,25 +55,7 @@ func (p *Dirt) Start() {
 }
 func (p *Dirt) dig(x, y, z int) {
 	if p.move(x, y+1, z) {
-		for ox := -1; ox < 2; ox++ {
-			for oy := -1; oy < 2; oy++ {
-				for oz := -1; oz < 2; oz++ {
-					if ox+oy+oz == 0 {
-						continue
-					}
-					pos := &blockPos{x: x + ox, y: y + oy, z: z + oz}
-					if _, ok := p.blockMap[*pos]; ok {
-						continue
-					}
-					if p.checkBlock(uint32(p.c.World.GetBlockStatus(x+oz, y+oy, z+oz))) {
-						println("new block")
-						p.blocks = append(p.blocks, pos)
-						p.blockMap[*pos] = true
-					}
-				}
-			}
-		}
-		time.Sleep(time.Millisecond * 80)
+		time.Sleep(time.Millisecond * 50)
 		p.c.ToggleFly(true)
 		p.c.StartBreakBlock(x, y, z, 0)
 		p.c.ToggleFly(false)
@@ -114,15 +99,41 @@ func (p *Dirt) setNewClaim(x, y, z int) {
 	x, y, z = p.getNewClaimCenterToBlock(x, y+1, z)
 	if p.c.World.GetBlockStatus(x, y, z) == 0 && p.c.World.GetBlockStatus(x, y+1, z) == 0 {
 		p.navigate.MoveTo(float64(x)+0.5, float64(y), float64(z)+0.5)
-		p.c.Chat("/delc")
+		p.c.Chat("/delallc")
 		p.c.Chat("/claim")
-		//p.c.Chat("delc&claim")
 		p.currentClaimCenter = blockPos{x: x, y: y, z: z}
+		p.refrshBlockList()
 		fmt.Println("New Claim Center:", x, y, z)
 		return
 	}
 	fmt.Println(x, y+1, z)
 	p.setNewClaim(x, y+1, z)
+}
+func (p *Dirt) refrshBlockList() {
+	p.blocks = make([]*block, 0)
+	p.blocks = append(p.blocks, &block{pos: blockPos{x: p.currentClaimCenter.x, y: p.currentClaimCenter.y - 1, z: p.currentClaimCenter.z}, cost: 0})
+	for x := p.currentClaimCenter.x - 12; x < p.currentClaimCenter.x+12; x++ {
+		for z := p.currentClaimCenter.z - 12; z < p.currentClaimCenter.z+12; z++ {
+			for y := p.currentClaimCenter.z + 5; y > 60; y-- {
+				if p.checkBlock(uint32(p.c.World.GetBlockStatus(x, y, z))) {
+					blockPos := blockPos{x: x, y: y, z: z}
+					cost := abs(x-p.currentClaimCenter.x) + abs(z-p.currentClaimCenter.z) + abs(y-p.currentClaimCenter.y)
+					blocK := &block{pos: blockPos, cost: uint(cost)}
+					result := false
+					for i := 0; i < len(p.blocks); i++ {
+						if blocK.cost == p.blocks[i].cost || blocK.cost < p.blocks[i].cost {
+							p.blocks = append(p.blocks[:i], append([]*block{blocK}, p.blocks[i:]...)...)
+							result = true
+							break
+						}
+					}
+					if !result {
+						p.blocks = append(p.blocks, blocK)
+					}
+				}
+			}
+		}
+	}
 }
 func (p *Dirt) checkBlock(ID uint32) bool {
 	var pass bool
