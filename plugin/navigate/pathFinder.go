@@ -50,6 +50,9 @@ func (f *pathFinder) getNodes() (bool, []*node) {
 			return true, f.node.returnNodes([]*node{f.node, f.node})
 		}
 		tempCount++
+		if tempCount > 20000 {
+			return false, nil
+		}
 		delete(f.openNodeList, f.node.pos)
 		f.closeNodeList[f.node.pos] = f.node
 		for offSet := -1; offSet < 2; offSet += 2 {
