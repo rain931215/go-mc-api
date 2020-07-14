@@ -30,7 +30,7 @@ func New(c *api.Client, n *navigate.Navigate) *Dirt {
 	return &Dirt{c: c, navigate: n}
 }
 func (p *Dirt) Start() {
-	p.whiteList = []uint32{8, 9, 10, 11, 12, 13}
+	p.whiteList = []uint32{8, 9, 10, 11, 12, 13, 8687}
 	p.start.x, p.start.y, p.start.z = int(math.Floor(p.c.GetX())), int(math.Floor(p.c.GetY())), int(math.Floor(p.c.GetZ()))
 	p.currentClaimCenter = p.start
 	p.c.Move(math.Floor(p.c.GetX())+0.5, math.Floor(p.c.GetY()), math.Floor(p.c.GetZ())+0.5, false)
@@ -123,7 +123,7 @@ func (p *Dirt) refrshBlockList() {
 	p.blocks = append(p.blocks, &block{pos: blockPos{x: p.currentClaimCenter.x, y: p.currentClaimCenter.y - 1, z: p.currentClaimCenter.z}, cost: 0})
 	for x := p.currentClaimCenter.x - 12; x < p.currentClaimCenter.x+12; x++ {
 		for z := p.currentClaimCenter.z - 12; z < p.currentClaimCenter.z+12; z++ {
-			for y := p.currentClaimCenter.z + 5; y > 60; y-- {
+			for y := p.currentClaimCenter.y + 5; y > 60; y-- {
 				if p.checkBlock(uint32(p.c.World.GetBlockStatus(x, y, z))) {
 					blockPos := blockPos{x: x, y: y, z: z}
 					cost := abs(x-p.currentClaimCenter.x) + abs(z-p.currentClaimCenter.z) + abs(y-p.currentClaimCenter.y)
