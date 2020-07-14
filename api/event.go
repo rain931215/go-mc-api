@@ -7,45 +7,49 @@ import (
 )
 
 type Events struct {
-	packetHandlers     []func(p *pk.Packet) (bool, error)
-	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) (bool, error)
-	chatHandlers       []func(msg chat.Message) (bool, error)
-	titleHandlers      []func(msg chat.Message) (bool, error)
-	disconnectHandlers []func(msg chat.Message) (bool, error)
-	timeUpdateHandlers []func(age, timeOfDay int64) (bool, error)
-	dieHandlers        []func() (bool, error)
+	globalLockChan chan interface{}
+
+	packetHandlers     []func(p *pk.Packet) bool
+	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) bool
+	chatHandlers       []func(msg chat.Message) bool
+	titleHandlers      []func(msg chat.Message) bool
+	disconnectHandlers []func(msg chat.Message) bool
+	timeUpdateHandlers []func(age, timeOfDay int64) bool
+	dieHandlers        []func() bool
 }
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
+	<-e.globalLockChan
+	defer func() { e.globalLockChan <- nil }()
 	switch handler.(type) {
-	case func(age, timeOfDay int64) (bool, error):
-		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) (bool, error)))
-	case func(id int8, slot int16, data entity.Slot) (bool, error):
-		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) (bool, error)))
-	case func(p *pk.Packet) (bool, error):
-		e.packetHandlers = append(e.packetHandlers, handler.(func(p *pk.Packet) (bool, error)))
-	case func(msg chat.Message) (bool, error):
+	case func(age, timeOfDay int64) bool:
+		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) bool))
+	case func(id int8, slot int16, data entity.Slot) bool:
+		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) bool))
+	case func(p *pk.Packet) bool:
+		e.packetHandlers = append(e.packetHandlers, handler.(func(p *pk.Packet) bool))
+	case func(msg chat.Message) bool:
 		switch handlerType {
 		case "chat":
-			e.chatHandlers = append(e.chatHandlers, handler.(func(msg chat.Message) (bool, error)))
+			e.chatHandlers = append(e.chatHandlers, handler.(func(msg chat.Message) bool))
 			break
 		case "title":
-			e.titleHandlers = append(e.titleHandlers, handler.(func(msg chat.Message) (bool, error)))
+			e.titleHandlers = append(e.titleHandlers, handler.(func(msg chat.Message) bool))
 			break
 		case "disconnect":
-			e.disconnectHandlers = append(e.disconnectHandlers, handler.(func(msg chat.Message) (bool, error)))
+			e.disconnectHandlers = append(e.disconnectHandlers, handler.(func(msg chat.Message) bool))
 			break
 		default:
-			panic("Unknown handler on type [func(msg chat.Message) error]")
+			panic("Unknown handler on type [func(msg chat.Message) bool]")
 		}
 		break
-	case func() (bool, error):
+	case func() bool:
 		switch handlerType {
 		case "die":
-			e.dieHandlers = append(e.dieHandlers, handler.(func() (bool, error)))
+			e.dieHandlers = append(e.dieHandlers, handler.(func() bool))
 			break
 		default:
-			panic("Unknown handler on type [func() error]")
+			panic("Unknown handler on type [func() bool]")
 		}
 		break
 	default:

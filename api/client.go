@@ -40,7 +40,8 @@ func NewClient() (client *Client) {
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
 	client.Position = new(Position)
-	client.Event = Events{}
+	client.Event = Events{globalLockChan: make(chan interface{}, 1)}
+	client.Event.globalLockChan <- nil
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	//client.packetOutStream = goconcurrentqueue.NewFIFO()
@@ -89,19 +90,22 @@ func NewClient() (client *Client) {
 						if len(client.Event.disconnectHandlers) < 1 {
 							break
 						}
-						for _, v := range client.Event.disconnectHandlers {
+						//鎖定Events
+						<-client.Event.globalLockChan
+
+						for i := 0; i < len(client.Event.disconnectHandlers); i++ {
+							v := client.Event.disconnectHandlers[i]
 							if v == nil {
 								continue
 							}
-							pass, err := v(msg)
-							if err != nil {
-								incomeErr = err
-								fmt.Println("Disconnect event error" + err.Error())
-							}
-							if pass {
-								break
+							if v(msg) { // 取得handler是否需自我移除
+								// 清除handler
+								client.Event.disconnectHandlers[i] = client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1]
+								client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1] = nil
+								client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
 							}
 						}
+						client.Event.globalLockChan <- nil
 					}
 					twoBreak = true
 					break

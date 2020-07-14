@@ -18,15 +18,21 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return nil
 	}
 	if len(c.Event.packetHandlers) >= 1 {
-		for _, v := range c.Event.packetHandlers {
+		//鎖定Events
+		<-c.Event.globalLockChan
+		for i := 0; i < len(c.Event.packetHandlers); i++ {
+			v := c.Event.packetHandlers[i]
 			if v == nil {
 				continue
 			}
-			pass, err := v(p)
-			if err != nil || pass {
-				break
+			if v(p) { // 取得handler是否需自我移除
+				// 清除handler
+				c.Event.packetHandlers[i] = c.Event.packetHandlers[len(c.Event.packetHandlers)-1]
+				c.Event.packetHandlers[len(c.Event.packetHandlers)-1] = nil
+				c.Event.packetHandlers = c.Event.packetHandlers[:len(c.Event.packetHandlers)-1]
 			}
 		}
+		c.Event.globalLockChan <- nil
 	}
 	switch p.ID {
 	case data.ChatMessageClientbound:
@@ -72,16 +78,20 @@ func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 		return err
 	}
 	if Health <= 0 { // 死亡
-		for _, v := range c.Event.dieHandlers {
+		//鎖定Events
+		<-c.Event.globalLockChan
+		defer func() { c.Event.globalLockChan <- nil }()
+
+		for i := 0; i < len(c.Event.dieHandlers); i++ {
+			v := c.Event.dieHandlers[i]
 			if v == nil {
 				continue
 			}
-			pass, err := v()
-			if err != nil {
-				return errors.New("Die event error" + err.Error())
-			}
-			if pass {
-				break
+			if v() { // 取得handler是否需自我移除
+				// 清除handler
+				c.Event.dieHandlers[i] = c.Event.dieHandlers[len(c.Event.dieHandlers)-1]
+				c.Event.dieHandlers[len(c.Event.dieHandlers)-1] = nil
+				c.Event.dieHandlers = c.Event.dieHandlers[:len(c.Event.dieHandlers)-1]
 			}
 		}
 	}
@@ -102,16 +112,20 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	if len(c.Event.setSlotHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
-	for _, v := range c.Event.setSlotHandlers {
+	//鎖定Events
+	<-c.Event.globalLockChan
+	defer func() { c.Event.globalLockChan <- nil }()
+
+	for i := 0; i < len(c.Event.setSlotHandlers); i++ {
+		v := c.Event.setSlotHandlers[i]
 		if v == nil {
 			continue
 		}
-		pass, err := v(int8(windowID), int16(slot), slotData)
-		if err != nil {
-			return errors.New("Set Slot event error" + err.Error())
-		}
-		if pass {
-			break
+		if v(int8(windowID), int16(slot), slotData) { // 取得handler是否需自我移除
+			// 清除handler
+			c.Event.setSlotHandlers[i] = c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1]
+			c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1] = nil
+			c.Event.setSlotHandlers = c.Event.setSlotHandlers[:len(c.Event.setSlotHandlers)-1]
 		}
 	}
 	return nil
@@ -124,16 +138,20 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 	if err := ScanFields(p, &age, &timeOfDay); err != nil {
 		return err
 	}
-	for _, v := range c.Event.timeUpdateHandlers {
+	//鎖定Events
+	<-c.Event.globalLockChan
+	defer func() { c.Event.globalLockChan <- nil }()
+
+	for i := 0; i < len(c.Event.timeUpdateHandlers); i++ {
+		v := c.Event.timeUpdateHandlers[i]
 		if v == nil {
 			continue
 		}
-		pass, err := v(int64(age), int64(timeOfDay))
-		if err != nil {
-			return errors.New("Time Update event error" + err.Error())
-		}
-		if pass {
-			break
+		if v(int64(age), int64(timeOfDay)) { // 取得handler是否需自我移除
+			// 清除handler
+			c.Event.timeUpdateHandlers[i] = c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1]
+			c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1] = nil
+			c.Event.timeUpdateHandlers = c.Event.timeUpdateHandlers[:len(c.Event.timeUpdateHandlers)-1]
 		}
 	}
 	return nil
@@ -143,18 +161,23 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 		return nil
 	}
 	var msg chat.Message
-	if err := ScanFields(p, &msg); err == nil {
-		for _, v := range c.Event.chatHandlers {
-			if v == nil {
-				continue
-			}
-			pass, err := v(msg)
-			if err != nil {
-				return errors.New("Chat event error" + err.Error())
-			}
-			if pass {
-				break
-			}
+	if err := ScanFields(p, &msg); err != nil {
+		return err
+	}
+	//鎖定Events
+	<-c.Event.globalLockChan
+	defer func() { c.Event.globalLockChan <- nil }()
+
+	for i := 0; i < len(c.Event.chatHandlers); i++ {
+		v := c.Event.chatHandlers[i]
+		if v == nil {
+			continue
+		}
+		if v(msg) { // 取得handler是否需自我移除
+			// 清除handler
+			c.Event.chatHandlers[i] = c.Event.chatHandlers[len(c.Event.chatHandlers)-1]
+			c.Event.chatHandlers[len(c.Event.chatHandlers)-1] = nil
+			c.Event.chatHandlers = c.Event.chatHandlers[:len(c.Event.chatHandlers)-1]
 		}
 	}
 	return nil
@@ -170,16 +193,20 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 	if ScanFields(p, &action, &msg) == nil && action == 0 {
 		title := &chat.Message{Text: "[Title] "}
 		title.Append(msg)
-		for _, v := range c.Event.titleHandlers {
+		//鎖定Events
+		<-c.Event.globalLockChan
+		defer func() { c.Event.globalLockChan <- nil }()
+
+		for i := 0; i < len(c.Event.titleHandlers); i++ {
+			v := c.Event.titleHandlers[i]
 			if v == nil {
 				continue
 			}
-			pass, err := v(*title)
-			if err != nil {
-				return errors.New("Title Message event error" + err.Error())
-			}
-			if pass {
-				break
+			if v(msg) { // 取得handler是否需自我移除
+				// 清除handler
+				c.Event.titleHandlers[i] = c.Event.titleHandlers[len(c.Event.titleHandlers)-1]
+				c.Event.titleHandlers[len(c.Event.titleHandlers)-1] = nil
+				c.Event.titleHandlers = c.Event.titleHandlers[:len(c.Event.titleHandlers)-1]
 			}
 		}
 	}
