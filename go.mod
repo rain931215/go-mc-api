@@ -9,4 +9,5 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/google/uuid v1.1.1
 	github.com/spf13/viper v1.7.0
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 )

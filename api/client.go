@@ -7,7 +7,6 @@ import (
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
 	pk "github.com/Tnze/go-mc/net/packet"
-	"github.com/enriquebris/goconcurrentqueue"
 	"github.com/rain931215/go-mc-api/api/world"
 	"net"
 	"time"
@@ -23,7 +22,8 @@ type Client struct {
 	Auth       *AuthInfo
 	EntityList *EntityList
 	*Position
-	packetOutStream *goconcurrentqueue.FIFO
+	//packetOutStream *goconcurrentqueue.FIFO
+	packetOutStream chan *pk.Packet
 	inStatusChannel chan error
 	Event           Events
 	connected       bool
@@ -43,9 +43,10 @@ func NewClient() (client *Client) {
 	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	client.packetOutStream = goconcurrentqueue.NewFIFO()
+	//client.packetOutStream = goconcurrentqueue.NewFIFO()
+	client.packetOutStream = make(chan *pk.Packet, 300)
 	client.inStatusChannel = make(chan error, 1)
-	go func() {
+	/*go func() {
 		for {
 			if obj, err := client.packetOutStream.DequeueOrWaitForNextElement(); err == nil {
 				if p, ok := obj.(*pk.Packet); ok && p != nil {
@@ -54,6 +55,17 @@ func NewClient() (client *Client) {
 					}
 					_ = client.Native.SendPacket(*p)
 				}
+			}
+		}
+	}()*/
+	go func() {
+		for {
+			select {
+			case v, ok := <-client.packetOutStream:
+				if !ok {
+					return
+				}
+				_ = client.Native.SendPacket(*v)
 			}
 		}
 	}()
@@ -139,9 +151,10 @@ func (c *Client) HandleGame() error {
 func (c *Client) SendPacket(packet pk.Packet) {
 	if c.packetOutStream == nil {
 		return
-	} else if err := c.packetOutStream.Enqueue(&packet); err != nil {
+	} /* else if err := c.packetOutStream.Enqueue(&packet); err != nil {
 		fmt.Println(fmt.Sprintf("Enqueue packet error: %v", err))
-	}
+	}*/
+	c.packetOutStream <- &packet
 }
 func (c *Client) Connected() bool {
 	return c.connected
