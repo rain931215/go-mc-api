@@ -30,6 +30,7 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 				c.Event.packetHandlers[i] = c.Event.packetHandlers[len(c.Event.packetHandlers)-1]
 				c.Event.packetHandlers[len(c.Event.packetHandlers)-1] = nil
 				c.Event.packetHandlers = c.Event.packetHandlers[:len(c.Event.packetHandlers)-1]
+				i--
 			}
 		}
 		c.Event.globalLockChan <- nil
@@ -92,6 +93,7 @@ func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 				c.Event.dieHandlers[i] = c.Event.dieHandlers[len(c.Event.dieHandlers)-1]
 				c.Event.dieHandlers[len(c.Event.dieHandlers)-1] = nil
 				c.Event.dieHandlers = c.Event.dieHandlers[:len(c.Event.dieHandlers)-1]
+				i--
 			}
 		}
 	}
@@ -126,6 +128,7 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 			c.Event.setSlotHandlers[i] = c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1]
 			c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1] = nil
 			c.Event.setSlotHandlers = c.Event.setSlotHandlers[:len(c.Event.setSlotHandlers)-1]
+			i--
 		}
 	}
 	return nil
@@ -152,6 +155,7 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 			c.Event.timeUpdateHandlers[i] = c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1]
 			c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1] = nil
 			c.Event.timeUpdateHandlers = c.Event.timeUpdateHandlers[:len(c.Event.timeUpdateHandlers)-1]
+			i--
 		}
 	}
 	return nil
@@ -178,6 +182,7 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 			c.Event.chatHandlers[i] = c.Event.chatHandlers[len(c.Event.chatHandlers)-1]
 			c.Event.chatHandlers[len(c.Event.chatHandlers)-1] = nil
 			c.Event.chatHandlers = c.Event.chatHandlers[:len(c.Event.chatHandlers)-1]
+			i--
 		}
 	}
 	return nil
@@ -207,15 +212,13 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 				c.Event.titleHandlers[i] = c.Event.titleHandlers[len(c.Event.titleHandlers)-1]
 				c.Event.titleHandlers[len(c.Event.titleHandlers)-1] = nil
 				c.Event.titleHandlers = c.Event.titleHandlers[:len(c.Event.titleHandlers)-1]
+				i--
 			}
 		}
 	}
 	return nil
 }
 func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
-	if c.World == nil {
-		return nil
-	}
 	var (
 		pos pk.Position
 		id  pk.VarInt
@@ -223,13 +226,32 @@ func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
 	if err := ScanFields(p, &pos, &id); err != nil {
 		return err
 	}
-	c.World.ChunkMapLock.Lock()
-	if chunk := c.World.Chunks[world.ChunkLoc{X: pos.X >> 4, Z: pos.Z >> 4}]; chunk != nil {
-		if v := chunk.Sections[pos.Y/16]; v != nil {
-			v.SetBlock(world.SectionOffset(pos.X&15, pos.Y&15, pos.Z&15), world.BlockStatus(id))
+	if len(c.Event.blockChangeHandlers) > 0 {
+		//鎖定Events
+		<-c.Event.globalLockChan
+		for i := 0; i < len(c.Event.blockChangeHandlers); i++ {
+			v := c.Event.blockChangeHandlers[i]
+			if v == nil {
+				continue
+			}
+			if v(pos.X, pos.Y, pos.Z, world.BlockStatus(id)) {
+				c.Event.blockChangeHandlers[i] = c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1]
+				c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1] = nil
+				c.Event.blockChangeHandlers = c.Event.blockChangeHandlers[:len(c.Event.blockChangeHandlers)-1]
+				i--
+			}
 		}
+		c.Event.globalLockChan <- nil
 	}
-	c.World.ChunkMapLock.Unlock()
+	if c.World != nil {
+		c.World.ChunkMapLock.Lock()
+		if chunk := c.World.Chunks[world.ChunkLoc{X: pos.X >> 4, Z: pos.Z >> 4}]; chunk != nil {
+			if v := chunk.Sections[pos.Y/16]; v != nil {
+				v.SetBlock(world.SectionOffset(pos.X&15, pos.Y&15, pos.Z&15), world.BlockStatus(id))
+			}
+		}
+		c.World.ChunkMapLock.Unlock()
+	}
 	return nil
 }
 func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
@@ -238,20 +260,20 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 	}
 	var (
 		r      = bytes.NewBuffer(p.Data)
-		cX, cY pk.Int
+		cX, cZ pk.Int
 		count  pk.VarInt
 	)
 	if err := cX.Decode(r); err != nil {
 		return err
 	}
-	if err := cY.Decode(r); err != nil {
+	if err := cZ.Decode(r); err != nil {
 		return err
 	}
 	if err := count.Decode(r); err != nil {
 		return err
 	}
 	c.World.ChunkMapLock.Lock()
-	if chunk := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cY)}]; chunk != nil {
+	if chunk := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cZ)}]; chunk != nil {
 		for i := 0; i < int(count); i++ {
 			if xz, err := r.ReadByte(); err == nil {
 				if y, err := r.ReadByte(); err == nil {
@@ -261,6 +283,20 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 						if v := chunk.Sections[y/16]; v != nil {
 							v.SetBlock(world.SectionOffset(int(x), int(y%16), int(z)), world.BlockStatus(blockID))
 						}
+						<-c.Event.globalLockChan
+						for i := 0; i < len(c.Event.blockChangeHandlers); i++ {
+							v := c.Event.blockChangeHandlers[i]
+							if v == nil {
+								continue
+							}
+							if v(int(cX*16)+int(x), int(y), int(cZ*16)+int(z), world.BlockStatus(blockID)) {
+								c.Event.blockChangeHandlers[i] = c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1]
+								c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1] = nil
+								c.Event.blockChangeHandlers = c.Event.blockChangeHandlers[:len(c.Event.blockChangeHandlers)-1]
+								i--
+							}
+						}
+						c.Event.globalLockChan <- nil
 					}
 				}
 			}

@@ -4,24 +4,27 @@ import (
 	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	pk "github.com/Tnze/go-mc/net/packet"
+	"github.com/rain931215/go-mc-api/api/world"
 )
 
 type Events struct {
-	globalLockChan chan interface{}
-
-	packetHandlers     []func(p *pk.Packet) bool
-	setSlotHandlers    []func(id int8, slot int16, data entity.Slot) bool
-	chatHandlers       []func(msg chat.Message) bool
-	titleHandlers      []func(msg chat.Message) bool
-	disconnectHandlers []func(msg chat.Message) bool
-	timeUpdateHandlers []func(age, timeOfDay int64) bool
-	dieHandlers        []func() bool
+	globalLockChan      chan interface{}
+	blockChangeHandlers []func(x, y, z int, id world.BlockStatus) bool
+	packetHandlers      []func(p *pk.Packet) bool
+	setSlotHandlers     []func(id int8, slot int16, data entity.Slot) bool
+	chatHandlers        []func(msg chat.Message) bool
+	titleHandlers       []func(msg chat.Message) bool
+	disconnectHandlers  []func(msg chat.Message) bool
+	timeUpdateHandlers  []func(age, timeOfDay int64) bool
+	dieHandlers         []func() bool
 }
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 	<-e.globalLockChan
 	defer func() { e.globalLockChan <- nil }()
 	switch handler.(type) {
+	case func(x, y, z int, id world.BlockStatus) bool:
+		e.blockChangeHandlers = append(e.blockChangeHandlers, handler.(func(x, y, z int, id world.BlockStatus) bool))
 	case func(age, timeOfDay int64) bool:
 		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) bool))
 	case func(id int8, slot int16, data entity.Slot) bool:
