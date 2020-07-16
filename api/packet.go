@@ -81,8 +81,6 @@ func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 	if Health <= 0 { // 死亡
 		//鎖定Events
 		<-c.Event.globalLockChan
-		defer func() { c.Event.globalLockChan <- nil }()
-
 		for i := 0; i < len(c.Event.dieHandlers); i++ {
 			v := c.Event.dieHandlers[i]
 			if v == nil {
@@ -96,6 +94,7 @@ func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 				i--
 			}
 		}
+		c.Event.globalLockChan <- nil
 	}
 	return nil
 }
@@ -116,8 +115,6 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	}
 	//鎖定Events
 	<-c.Event.globalLockChan
-	defer func() { c.Event.globalLockChan <- nil }()
-
 	for i := 0; i < len(c.Event.setSlotHandlers); i++ {
 		v := c.Event.setSlotHandlers[i]
 		if v == nil {
@@ -131,6 +128,7 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 			i--
 		}
 	}
+	c.Event.globalLockChan <- nil
 	return nil
 }
 func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
@@ -143,8 +141,6 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 	}
 	//鎖定Events
 	<-c.Event.globalLockChan
-	defer func() { c.Event.globalLockChan <- nil }()
-
 	for i := 0; i < len(c.Event.timeUpdateHandlers); i++ {
 		v := c.Event.timeUpdateHandlers[i]
 		if v == nil {
@@ -158,6 +154,7 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 			i--
 		}
 	}
+	c.Event.globalLockChan <- nil
 	return nil
 }
 func (c *Client) handleChatPacket(p *pk.Packet) error {
@@ -170,8 +167,6 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 	}
 	//鎖定Events
 	<-c.Event.globalLockChan
-	defer func() { c.Event.globalLockChan <- nil }()
-
 	for i := 0; i < len(c.Event.chatHandlers); i++ {
 		v := c.Event.chatHandlers[i]
 		if v == nil {
@@ -185,6 +180,7 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 			i--
 		}
 	}
+	c.Event.globalLockChan <- nil
 	return nil
 }
 func (c *Client) handleTitlePacket(p *pk.Packet) error {
@@ -200,8 +196,6 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 		title.Append(msg)
 		//鎖定Events
 		<-c.Event.globalLockChan
-		defer func() { c.Event.globalLockChan <- nil }()
-
 		for i := 0; i < len(c.Event.titleHandlers); i++ {
 			v := c.Event.titleHandlers[i]
 			if v == nil {
@@ -215,6 +209,7 @@ func (c *Client) handleTitlePacket(p *pk.Packet) error {
 				i--
 			}
 		}
+		c.Event.globalLockChan <- nil
 	}
 	return nil
 }
