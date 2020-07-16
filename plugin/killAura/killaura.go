@@ -5,6 +5,14 @@ import (
 	tpscounter "github.com/rain931215/go-mc-api/plugin/tpsCounter"
 )
 
+/*
+	Usage
+	killaura := killaura.New(c, 5)
+	killaura.EntityType = []int32{23, 84, 87, 88, 90} //raid's mobs
+	killaura.Start()
+
+*/
+
 //Killaura _
 type Killaura struct {
 	c                      *api.Client
