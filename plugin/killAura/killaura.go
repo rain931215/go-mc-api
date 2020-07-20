@@ -7,7 +7,7 @@ import (
 
 /*
 	Usage
-	killaura := killaura.New(c, 5)
+	killaura := killaura.New(c, 600, 5)
 	killaura.EntityType = []int32{23, 84, 87, 88, 90} //raid's mobs
 	killaura.Start()
 
@@ -20,33 +20,43 @@ type Killaura struct {
 	lock, stop             bool
 	attackTimes, maxTarget int
 	EntityType             []int32
-	Delay                  uint
+	Delay                  int
 }
 
-//New _
-func New(c *api.Client, maxTarget int) *Killaura {
+//New plugin
+func New(c *api.Client, Delay, maxTarget int) *Killaura {
 	p := new(Killaura)
 	p.c = c
 	p.tpsCounter = tpscounter.New(c, 180)
+	p.Delay = Delay
 	p.maxTarget = maxTarget
 	p.stop = true
 	p.c.Event.AddEventHandler(p.onTimeUpdate, "time")
 	return p
 }
 
-//Start _
+//Start killaura
 func (p *Killaura) Start() {
 	p.stop = false
 }
 
-//Stop _
+//Stop killaura
 func (p *Killaura) Stop() {
+	p.attackTimes = 0
 	p.stop = true
 }
 
+//SetDelay 設定攻擊間隔
+func (p *Killaura) SetDelay(Delay int) {
+	p.Delay = Delay
+}
+
+//SetMaxTarget 一次最多攻擊多少對象
+func (p *Killaura) SetMaxTarget(maxTarget int) {
+	p.maxTarget = maxTarget
+}
 func (p *Killaura) onTimeUpdate(age, timeOfDay int64) bool {
 	if p.stop {
-		p.attackTimes = 0
 		return false
 	}
 	if p.attackTimes < 3 {
@@ -57,7 +67,7 @@ func (p *Killaura) onTimeUpdate(age, timeOfDay int64) bool {
 			go func() {
 				for _ = p.attackTimes; p.attackTimes > 0; p.attackTimes-- {
 					p.attack()
-					p.tpsCounter.Sleep(600)
+					p.tpsCounter.Sleep(p.Delay)
 				}
 				p.lock = false
 			}()
