@@ -9,6 +9,7 @@ import (
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -40,8 +41,7 @@ func NewClient() (client *Client) {
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
 	client.Position = new(Position)
-	client.Event = Events{globalLockChan: make(chan interface{}, 1)}
-	client.Event.globalLockChan <- nil
+	client.Event = Events{globalLockChan: new(sync.Mutex)}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	//client.packetOutStream = goconcurrentqueue.NewFIFO()
@@ -91,7 +91,7 @@ func NewClient() (client *Client) {
 							break
 						}
 						//鎖定Events
-						<-client.Event.globalLockChan
+						client.Event.globalLockChan.Lock()
 
 						for i := 0; i < len(client.Event.disconnectHandlers); i++ {
 							v := client.Event.disconnectHandlers[i]
@@ -105,7 +105,7 @@ func NewClient() (client *Client) {
 								client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
 							}
 						}
-						client.Event.globalLockChan <- nil
+						client.Event.globalLockChan.Unlock()
 					}
 					twoBreak = true
 					break
