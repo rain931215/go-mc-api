@@ -40,8 +40,7 @@ func NewClient() (client *Client) {
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
 	client.Position = new(Position)
-	client.Event = Events{globalLockChan: make(chan interface{}, 1)}
-	client.Event.globalLockChan <- nil
+	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	//client.packetOutStream = goconcurrentqueue.NewFIFO()
