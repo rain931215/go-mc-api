@@ -90,7 +90,7 @@ func NewClient() (client *Client) {
 							break
 						}
 						//鎖定Events
-						<-client.Event.globalLockChan
+						client.Event.globalLockChan.Lock()
 
 						for i := 0; i < len(client.Event.disconnectHandlers); i++ {
 							v := client.Event.disconnectHandlers[i]
@@ -104,7 +104,7 @@ func NewClient() (client *Client) {
 								client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
 							}
 						}
-						client.Event.globalLockChan <- nil
+						client.Event.globalLockChan.Unlock()
 					}
 					twoBreak = true
 					break
