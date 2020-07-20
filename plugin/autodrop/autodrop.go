@@ -70,7 +70,7 @@ func (p *Autodrop) onSetSlotEvent(id int8, slot int16, data entity.Slot) bool {
 				return false
 			}
 		}
-		println("throw", slot, data.ItemID)
+		//println("throw", slot, data.ItemID)
 		p.c.ClickWindow(0, slot, 1, 4)
 	}
 	return false
