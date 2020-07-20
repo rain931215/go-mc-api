@@ -9,6 +9,7 @@ import (
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -40,7 +41,7 @@ func NewClient() (client *Client) {
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
 	client.Position = new(Position)
-	client.Event = Events{}
+	client.Event = Events{globalLockChan: new(sync.Mutex)}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	//client.packetOutStream = goconcurrentqueue.NewFIFO()
