@@ -22,13 +22,13 @@ func New(c *api.Client, cycleTime int) *TpsCounter {
 	return p
 }
 
-func (p *TpsCounter) onTimeUpdate(age, timeOfDay int64) (bool, error) {
+func (p *TpsCounter) onTimeUpdate(age, timeOfDay int64) bool {
 	p.packetCount++
 	if p.packetCount > (p.cycleTime / 2) {
 		p.markRealTime = p.markRealTime + ((time.Now().Unix() - p.markRealTime) / 2)
 		p.packetCount = p.packetCount / 2
 	}
-	return false, nil
+	return false
 }
 
 //GetTps _
