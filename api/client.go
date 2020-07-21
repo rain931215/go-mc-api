@@ -23,7 +23,7 @@ type Client struct {
 	Auth       *AuthInfo
 	EntityList *EntityList
 	*Position
-	//packetOutStream *goconcurrentqueue.FIFO
+	packetInStream  chan *pk.Packet
 	packetOutStream chan *pk.Packet
 	inStatusChannel chan error
 	Event           Events
@@ -44,96 +44,51 @@ func NewClient() (client *Client) {
 	client.Event = Events{globalLockChan: new(sync.Mutex)}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
-	//client.packetOutStream = goconcurrentqueue.NewFIFO()
-	client.packetOutStream = make(chan *pk.Packet, 300)
+	client.packetInStream = make(chan *pk.Packet, 1024)
+	client.packetOutStream = make(chan *pk.Packet, 1024)
 	client.inStatusChannel = make(chan error, 1)
-	/*go func() {
-		for {
-			if obj, err := client.packetOutStream.DequeueOrWaitForNextElement(); err == nil {
-				if p, ok := obj.(*pk.Packet); ok && p != nil {
-					if client == nil || client.Native == nil || client.Native.Conn() == nil {
-						continue
+	go func(pChannel <-chan *pk.Packet) {
+		for v := range pChannel {
+			if v == nil {
+				continue
+			}
+			_ = client.Native.SendPacket(*v)
+		}
+	}(client.packetOutStream)
+	go func(pChannel <-chan *pk.Packet) {
+		for v := range pChannel {
+			if v == nil {
+				continue
+			}
+			currentTime := time.Now().UnixNano()
+			if v.ID == 0x1b {
+				var msg chat.Message
+				if msg.Decode(bytes.NewReader(v.Data)) == nil {
+					if len(client.Event.disconnectHandlers) < 1 {
+						break
 					}
-					_ = client.Native.SendPacket(*p)
-				}
-			}
-		}
-	}()*/
-	go func() {
-		for {
-			select {
-			case v, ok := <-client.packetOutStream:
-				if !ok {
-					return
-				}
-				_ = client.Native.SendPacket(*v)
-			}
-		}
-	}()
-	go func() {
-		var incomeErr error
-		for {
-			<-client.inStatusChannel
-			client.connected = true // 設定連線狀態
-			for {
-				incomeErr = nil
-				p, err := client.Native.Conn().ReadPacket()
-				if err != nil {
-					incomeErr = err
-					break
-				}
-				twoBreak := false
-				switch p.ID {
-				case 0x1b: // 0x1b = Disconnect (play) https://wiki.vg/Protocol#Disconnect_.28play.29
-					var msg chat.Message
-					if msg.Decode(bytes.NewBuffer(p.Data)) == nil {
-						if len(client.Event.disconnectHandlers) < 1 {
-							break
+					client.Event.globalLockChan.Lock()
+					for i := 0; i < len(client.Event.disconnectHandlers); i++ {
+						v := client.Event.disconnectHandlers[i]
+						if v == nil {
+							continue
 						}
-						//鎖定Events
-						client.Event.globalLockChan.Lock()
-
-						for i := 0; i < len(client.Event.disconnectHandlers); i++ {
-							v := client.Event.disconnectHandlers[i]
-							if v == nil {
-								continue
-							}
-							if v(msg) { // 取得handler是否需自我移除
-								// 清除handler
-								client.Event.disconnectHandlers[i] = client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1]
-								client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1] = nil
-								client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
-							}
+						if v(msg) {
+							client.Event.disconnectHandlers[i] = client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1]
+							client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1] = nil
+							client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
 						}
-						client.Event.globalLockChan.Unlock()
 					}
-					twoBreak = true
-					break
-				case data.KeepAliveClientbound:
-					var ID pk.Long
-					if ID.Decode(bytes.NewReader(p.Data)) == nil {
-						go func() {
-							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
-							time.Sleep(3 * time.Second)
-							_ = client.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
-						}()
-					}
-					break
-				default:
-					if err := client.handlePacket(&p); err != nil {
-						incomeErr = err
-						twoBreak = true
-					}
-					break
+					client.Event.globalLockChan.Unlock()
 				}
-				if twoBreak {
-					break
-				}
+			} else {
+				_ = client.handlePacket(v)
 			}
-			client.connected = false // 設定連線狀態
-			client.inStatusChannel <- incomeErr
+			if diff := time.Now().UnixNano() - currentTime; diff > 30000000 { // 大於30ms就輸出時間
+				fmt.Print(fmt.Sprintf("封包超過正常時間:%v毫秒", diff))
+			}
 		}
-	}()
+	}(client.packetInStream)
 	return
 }
 
@@ -149,15 +104,30 @@ func (c *Client) JoinServerWithDialer(ip string, port int, dialer *net.Dialer) e
 	return c.Native.JoinServerWithDialer(dialer, fmt.Sprintf("%s:%d", ip, port))
 }
 func (c *Client) HandleGame() error {
-	c.inStatusChannel <- nil
-	return <-c.inStatusChannel
+	c.connected = true
+	defer func() { c.connected = false }()
+	for {
+		if c == nil || c.Native == nil || c.Native.Conn() == nil {
+			return nil
+		}
+		p, err := c.Native.Conn().ReadPacket()
+		if err != nil {
+			return err
+		}
+		if p.ID == data.KeepAliveClientbound {
+			var ID pk.Long
+			if ID.Decode(bytes.NewReader(p.Data)) == nil {
+				_ = c.Native.SendPacket(pk.Marshal(data.KeepAliveServerbound, ID))
+			}
+			continue
+		}
+		c.packetInStream <- &p
+	}
 }
 func (c *Client) SendPacket(packet pk.Packet) {
 	if c.packetOutStream == nil {
 		return
-	} /* else if err := c.packetOutStream.Enqueue(&packet); err != nil {
-		fmt.Println(fmt.Sprintf("Enqueue packet error: %v", err))
-	}*/
+	}
 	c.packetOutStream <- &packet
 }
 func (c *Client) Connected() bool {

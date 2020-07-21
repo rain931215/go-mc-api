@@ -254,7 +254,7 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r      = bytes.NewBuffer(p.Data)
+		r      = bytes.NewReader(p.Data)
 		cX, cZ pk.Int
 		count  pk.VarInt
 	)
@@ -431,7 +431,7 @@ func (c *Client) handleRemoveEntityPacket(p *pk.Packet) error {
 		return nil
 	}
 	var (
-		r     = bytes.NewBuffer(p.Data)
+		r     = bytes.NewReader(p.Data)
 		count pk.VarInt
 	)
 	if err := count.Decode(r); err != nil {
@@ -516,7 +516,7 @@ func (c *chunkData) Decode(r pk.DecodeReader) error {
 	return nil
 }
 func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
-	r := bytes.NewBuffer(p.Data)
+	r := bytes.NewReader(p.Data)
 	for _, v := range fields {
 		err := v.Decode(r)
 		if err != nil {
