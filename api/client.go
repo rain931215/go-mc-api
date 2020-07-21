@@ -65,7 +65,7 @@ func NewClient() (client *Client) {
 				var msg chat.Message
 				if msg.Decode(bytes.NewReader(v.Data)) == nil {
 					if len(client.Event.disconnectHandlers) < 1 {
-						break
+						continue
 					}
 					client.Event.globalLockChan.Lock()
 					for i := 0; i < len(client.Event.disconnectHandlers); i++ {
@@ -85,7 +85,7 @@ func NewClient() (client *Client) {
 				_ = client.handlePacket(v)
 			}
 			if diff := time.Now().UnixNano() - currentTime; diff > 30000000 { // 大於30ms就輸出時間
-				fmt.Print(fmt.Sprintf("封包超過正常時間:%v毫秒", diff))
+				fmt.Println(fmt.Sprintf("封包超過正常時間:%v毫秒", diff))
 			}
 		}
 	}(client.packetInStream)
