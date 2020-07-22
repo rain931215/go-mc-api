@@ -9,7 +9,6 @@ import (
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -25,7 +24,6 @@ type Client struct {
 	*Position
 	packetInStream  chan *pk.Packet
 	packetOutStream chan *pk.Packet
-	inStatusChannel chan error
 	Event           Events
 	connected       bool
 }
@@ -41,12 +39,11 @@ func NewClient() (client *Client) {
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
 	client.Position = new(Position)
-	client.Event = Events{globalLockChan: new(sync.Mutex)}
+	client.Event = Events{}
 	client.Auth = &AuthInfo{ID: "steve"}
 	client.EntityList = NewEntityList()
 	client.packetInStream = make(chan *pk.Packet, 1024)
 	client.packetOutStream = make(chan *pk.Packet, 1024)
-	client.inStatusChannel = make(chan error, 1)
 	go func(pChannel <-chan *pk.Packet) {
 		for v := range pChannel {
 			if v == nil {
@@ -63,29 +60,26 @@ func NewClient() (client *Client) {
 			currentTime := time.Now().UnixNano()
 			if v.ID == 0x1b {
 				var msg chat.Message
-				if msg.Decode(bytes.NewReader(v.Data)) == nil {
+				if v.Scan(&msg) == nil {
 					if len(client.Event.disconnectHandlers) < 1 {
 						continue
 					}
-					client.Event.globalLockChan.Lock()
 					for i := 0; i < len(client.Event.disconnectHandlers); i++ {
 						v := client.Event.disconnectHandlers[i]
 						if v == nil {
 							continue
 						}
 						if v(msg) {
-							client.Event.disconnectHandlers[i] = client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1]
-							client.Event.disconnectHandlers[len(client.Event.disconnectHandlers)-1] = nil
-							client.Event.disconnectHandlers = client.Event.disconnectHandlers[:len(client.Event.disconnectHandlers)-1]
+							client.Event.disconnectHandlers = append(client.Event.disconnectHandlers[:i], client.Event.disconnectHandlers[i+1:]...)
+							i--
 						}
 					}
-					client.Event.globalLockChan.Unlock()
 				}
 			} else {
 				_ = client.handlePacket(v)
 			}
 			if diff := time.Now().UnixNano() - currentTime; diff > 30000000 { // 大於30ms就輸出時間
-				fmt.Println(fmt.Sprintf("封包超過正常時間:%v毫秒", diff))
+				fmt.Println(fmt.Sprintf("封包超過正常時間:%v.%v毫秒", diff/1000000, diff%1000000))
 			}
 		}
 	}(client.packetInStream)

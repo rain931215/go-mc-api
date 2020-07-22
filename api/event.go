@@ -5,11 +5,9 @@ import (
 	"github.com/Tnze/go-mc/chat"
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
-	"sync"
 )
 
 type Events struct {
-	globalLockChan      *sync.Mutex
 	blockChangeHandlers []func(x, y, z int, id world.BlockStatus) bool
 	packetHandlers      []func(p *pk.Packet) bool
 	setSlotHandlers     []func(id int8, slot int16, data entity.Slot) bool
@@ -21,7 +19,6 @@ type Events struct {
 }
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
-	e.globalLockChan.Lock()
 	switch handler.(type) {
 	case func(x, y, z int, id world.BlockStatus) bool:
 		e.blockChangeHandlers = append(e.blockChangeHandlers, handler.(func(x, y, z int, id world.BlockStatus) bool))
@@ -62,5 +59,4 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 	default:
 		panic("Unknown handler type")
 	}
-	e.globalLockChan.Unlock()
 }
