@@ -15,18 +15,6 @@ const (
 func (c *Client) Chat(msg string) {
 	c.SendPacket(pk.Marshal(data.ChatMessageServerbound, pk.String(msg)))
 }
-func (c *Client) ToggleFly(enable bool) {
-	b := pk.Byte(4)
-	if enable {
-		b = pk.Byte(2)
-	}
-	c.SendPacket(pk.Marshal(
-		data.PlayerAbilitiesServerbound,
-		b,
-		pk.Float(1),
-		pk.Float(1),
-	))
-}
 func (c *Client) Move(x, y, z float64, onGround bool) {
 	c.SetX(x)
 	c.SetY(y)
@@ -92,11 +80,12 @@ func (c *Client) FinishBreakBlock(x, y, z int, direction Direction) {
 		pk.Byte(direction),
 	))
 }
-func (c *Client) AttackEntity(id int32) {
+func (c *Client) AttackEntity(id int32, sneaking bool) {
 	c.SendPacket(pk.Marshal(
 		data.UseEntity,
 		pk.VarInt(id),
 		pk.VarInt(1),
+		pk.Boolean(sneaking),
 	))
 }
 func (c *Client) SwitchHotBar(slot int16) {
