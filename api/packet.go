@@ -393,12 +393,13 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 	var (
 		X, Z           pk.Int
 		FullChunk      pk.Boolean
+		IgnoreOldData  pk.Boolean
 		PrimaryBitMask pk.VarInt
 		Heightmaps     struct{}
 		Biomes         = biomesData{fullChunk: (*bool)(&FullChunk)}
 		Data           chunkData
 	)
-	if err := p.Scan(&X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
+	if err := p.Scan(&X, &Z, &FullChunk, &IgnoreOldData, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
 		return err
 	}
 	chunk, err := world.DecodeChunkColumn(int32(PrimaryBitMask), Data)
