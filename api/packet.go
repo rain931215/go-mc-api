@@ -46,7 +46,7 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleTimeUpdatePacket(p)
 	case data.SpawnPlayer:
 		return c.handleSpawnPlayerPacket(p)
-	case data.SpawnMob:
+	case data.SpawnLivingEntity:
 		return c.handleSpawnMobPacket(p)
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
 		return c.handleEntityLocationUpdatePacket(p)
