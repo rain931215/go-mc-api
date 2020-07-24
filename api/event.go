@@ -5,23 +5,19 @@ import (
 	"github.com/Tnze/go-mc/chat"
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
-	"sync"
 )
 
 type Events struct {
-	globalLockChan      *sync.Mutex
 	blockChangeHandlers []func(x, y, z int, id world.BlockStatus) bool
 	packetHandlers      []func(p *pk.Packet) bool
 	setSlotHandlers     []func(id int8, slot int16, data entity.Slot) bool
 	chatHandlers        []func(msg chat.Message) bool
-	titleHandlers       []func(msg chat.Message) bool
 	disconnectHandlers  []func(msg chat.Message) bool
 	timeUpdateHandlers  []func(age, timeOfDay int64) bool
 	dieHandlers         []func() bool
 }
 
 func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
-	e.globalLockChan.Lock()
 	switch handler.(type) {
 	case func(x, y, z int, id world.BlockStatus) bool:
 		e.blockChangeHandlers = append(e.blockChangeHandlers, handler.(func(x, y, z int, id world.BlockStatus) bool))
@@ -39,9 +35,6 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 		switch handlerType {
 		case "chat":
 			e.chatHandlers = append(e.chatHandlers, handler.(func(msg chat.Message) bool))
-			break
-		case "title":
-			e.titleHandlers = append(e.titleHandlers, handler.(func(msg chat.Message) bool))
 			break
 		case "disconnect":
 			e.disconnectHandlers = append(e.disconnectHandlers, handler.(func(msg chat.Message) bool))
@@ -62,5 +55,4 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 	default:
 		panic("Unknown handler type")
 	}
-	e.globalLockChan.Unlock()
 }

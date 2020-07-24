@@ -17,29 +17,21 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	if p == nil {
 		return nil
 	}
-	if len(c.Event.packetHandlers) >= 1 {
-		//鎖定Events
-		c.Event.globalLockChan.Lock()
+	if len(c.Event.packetHandlers) > 0 {
 		for i := 0; i < len(c.Event.packetHandlers); i++ {
 			v := c.Event.packetHandlers[i]
 			if v == nil {
 				continue
 			}
-			if v(p) { // 取得handler是否需自我移除
-				// 清除handler
-				c.Event.packetHandlers[i] = c.Event.packetHandlers[len(c.Event.packetHandlers)-1]
-				c.Event.packetHandlers[len(c.Event.packetHandlers)-1] = nil
-				c.Event.packetHandlers = c.Event.packetHandlers[:len(c.Event.packetHandlers)-1]
+			if v(p) {
+				c.Event.packetHandlers = append(c.Event.packetHandlers[:i], c.Event.packetHandlers[i+1:]...)
 				i--
 			}
 		}
-		c.Event.globalLockChan.Unlock()
 	}
 	switch p.ID {
 	case data.ChatMessageClientbound:
 		return c.handleChatPacket(p)
-	case data.Title:
-		return c.handleTitlePacket(p)
 	case data.BlockChange:
 		return c.handleBlockChangePacket(p)
 	case data.MultiBlockChange:
@@ -75,26 +67,20 @@ func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 		return nil
 	}
 	var Health pk.Float
-	if err := ScanFields(p, &Health); err != nil {
+	if err := p.Scan(&Health); err != nil {
 		return err
 	}
 	if Health <= 0 { // 死亡
-		//鎖定Events
-		c.Event.globalLockChan.Lock()
 		for i := 0; i < len(c.Event.dieHandlers); i++ {
 			v := c.Event.dieHandlers[i]
 			if v == nil {
 				continue
 			}
-			if v() { // 取得handler是否需自我移除
-				// 清除handler
-				c.Event.dieHandlers[i] = c.Event.dieHandlers[len(c.Event.dieHandlers)-1]
-				c.Event.dieHandlers[len(c.Event.dieHandlers)-1] = nil
-				c.Event.dieHandlers = c.Event.dieHandlers[:len(c.Event.dieHandlers)-1]
+			if v() {
+				c.Event.dieHandlers = append(c.Event.dieHandlers[:i], c.Event.dieHandlers[i+1:]...)
 				i--
 			}
 		}
-		c.Event.globalLockChan.Unlock()
 	}
 	return nil
 }
@@ -104,7 +90,7 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 		slot     pk.Short
 		slotData entity.Slot
 	)
-	if err := ScanFields(p, &windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
+	if err := p.Scan(&windowID, &slot, &slotData); err != nil && !errors.Is(err, nbt.ErrEND) {
 		return err
 	}
 	if c.Inventory != nil && windowID == 0 { // 更新背包
@@ -113,22 +99,16 @@ func (c *Client) handleSetSlotPacket(p *pk.Packet) error {
 	if len(c.Event.setSlotHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
 		return nil
 	}
-	//鎖定Events
-	c.Event.globalLockChan.Lock()
 	for i := 0; i < len(c.Event.setSlotHandlers); i++ {
 		v := c.Event.setSlotHandlers[i]
 		if v == nil {
 			continue
 		}
-		if v(int8(windowID), int16(slot), slotData) { // 取得handler是否需自我移除
-			// 清除handler
-			c.Event.setSlotHandlers[i] = c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1]
-			c.Event.setSlotHandlers[len(c.Event.setSlotHandlers)-1] = nil
-			c.Event.setSlotHandlers = c.Event.setSlotHandlers[:len(c.Event.setSlotHandlers)-1]
+		if v(int8(windowID), int16(slot), slotData) {
+			c.Event.setSlotHandlers = append(c.Event.setSlotHandlers[:i], c.Event.setSlotHandlers[i+1:]...)
 			i--
 		}
 	}
-	c.Event.globalLockChan.Unlock()
 	return nil
 }
 func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
@@ -136,25 +116,19 @@ func (c *Client) handleTimeUpdatePacket(p *pk.Packet) error {
 		return nil
 	}
 	var age, timeOfDay pk.Long
-	if err := ScanFields(p, &age, &timeOfDay); err != nil {
+	if err := p.Scan(&age, &timeOfDay); err != nil {
 		return err
 	}
-	//鎖定Events
-	c.Event.globalLockChan.Lock()
 	for i := 0; i < len(c.Event.timeUpdateHandlers); i++ {
 		v := c.Event.timeUpdateHandlers[i]
 		if v == nil {
 			continue
 		}
-		if v(int64(age), int64(timeOfDay)) { // 取得handler是否需自我移除
-			// 清除handler
-			c.Event.timeUpdateHandlers[i] = c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1]
-			c.Event.timeUpdateHandlers[len(c.Event.timeUpdateHandlers)-1] = nil
-			c.Event.timeUpdateHandlers = c.Event.timeUpdateHandlers[:len(c.Event.timeUpdateHandlers)-1]
+		if v(int64(age), int64(timeOfDay)) {
+			c.Event.timeUpdateHandlers = append(c.Event.timeUpdateHandlers[:i], c.Event.timeUpdateHandlers[i+1:]...)
 			i--
 		}
 	}
-	c.Event.globalLockChan.Unlock()
 	return nil
 }
 func (c *Client) handleChatPacket(p *pk.Packet) error {
@@ -162,54 +136,18 @@ func (c *Client) handleChatPacket(p *pk.Packet) error {
 		return nil
 	}
 	var msg chat.Message
-	if err := ScanFields(p, &msg); err != nil {
+	if err := p.Scan(&msg); err != nil {
 		return err
 	}
-	//鎖定Events
-	c.Event.globalLockChan.Lock()
 	for i := 0; i < len(c.Event.chatHandlers); i++ {
 		v := c.Event.chatHandlers[i]
 		if v == nil {
 			continue
 		}
-		if v(msg) { // 取得handler是否需自我移除
-			// 清除handler
-			c.Event.chatHandlers[i] = c.Event.chatHandlers[len(c.Event.chatHandlers)-1]
-			c.Event.chatHandlers[len(c.Event.chatHandlers)-1] = nil
-			c.Event.chatHandlers = c.Event.chatHandlers[:len(c.Event.chatHandlers)-1]
+		if v(msg) {
+			c.Event.chatHandlers = append(c.Event.chatHandlers[:i], c.Event.chatHandlers[i+1:]...)
 			i--
 		}
-	}
-	c.Event.globalLockChan.Unlock()
-	return nil
-}
-func (c *Client) handleTitlePacket(p *pk.Packet) error {
-	if len(c.Event.titleHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
-		return nil
-	}
-	var (
-		action pk.VarInt
-		msg    chat.Message
-	)
-	if ScanFields(p, &action, &msg) == nil && action == 0 {
-		title := &chat.Message{Text: "[Title] "}
-		title.Append(msg)
-		//鎖定Events
-		c.Event.globalLockChan.Lock()
-		for i := 0; i < len(c.Event.titleHandlers); i++ {
-			v := c.Event.titleHandlers[i]
-			if v == nil {
-				continue
-			}
-			if v(msg) { // 取得handler是否需自我移除
-				// 清除handler
-				c.Event.titleHandlers[i] = c.Event.titleHandlers[len(c.Event.titleHandlers)-1]
-				c.Event.titleHandlers[len(c.Event.titleHandlers)-1] = nil
-				c.Event.titleHandlers = c.Event.titleHandlers[:len(c.Event.titleHandlers)-1]
-				i--
-			}
-		}
-		c.Event.globalLockChan.Unlock()
 	}
 	return nil
 }
@@ -218,25 +156,20 @@ func (c *Client) handleBlockChangePacket(p *pk.Packet) error {
 		pos pk.Position
 		id  pk.VarInt
 	)
-	if err := ScanFields(p, &pos, &id); err != nil {
+	if err := p.Scan(&pos, &id); err != nil {
 		return err
 	}
 	if len(c.Event.blockChangeHandlers) > 0 {
-		//鎖定Events
-		c.Event.globalLockChan.Lock()
 		for i := 0; i < len(c.Event.blockChangeHandlers); i++ {
 			v := c.Event.blockChangeHandlers[i]
 			if v == nil {
 				continue
 			}
 			if v(pos.X, pos.Y, pos.Z, world.BlockStatus(id)) {
-				c.Event.blockChangeHandlers[i] = c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1]
-				c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1] = nil
-				c.Event.blockChangeHandlers = c.Event.blockChangeHandlers[:len(c.Event.blockChangeHandlers)-1]
+				c.Event.blockChangeHandlers = append(c.Event.blockChangeHandlers[:i], c.Event.blockChangeHandlers[i+1:]...)
 				i--
 			}
 		}
-		c.Event.globalLockChan.Unlock()
 	}
 	if c.World != nil {
 		c.World.ChunkMapLock.Lock()
@@ -278,20 +211,16 @@ func (c *Client) handleMultiBlockChangePacket(p *pk.Packet) error {
 						if v := chunk.Sections[y/16]; v != nil {
 							v.SetBlock(world.SectionOffset(int(x), int(y%16), int(z)), world.BlockStatus(blockID))
 						}
-						c.Event.globalLockChan.Lock()
 						for i := 0; i < len(c.Event.blockChangeHandlers); i++ {
 							v := c.Event.blockChangeHandlers[i]
 							if v == nil {
 								continue
 							}
 							if v(int(cX*16)+int(x), int(y), int(cZ*16)+int(z), world.BlockStatus(blockID)) {
-								c.Event.blockChangeHandlers[i] = c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1]
-								c.Event.blockChangeHandlers[len(c.Event.blockChangeHandlers)-1] = nil
-								c.Event.blockChangeHandlers = c.Event.blockChangeHandlers[:len(c.Event.blockChangeHandlers)-1]
+								c.Event.blockChangeHandlers = append(c.Event.blockChangeHandlers[:i], c.Event.blockChangeHandlers[i+1:]...)
 								i--
 							}
 						}
-						c.Event.globalLockChan.Unlock()
 					}
 				}
 			}
@@ -307,7 +236,7 @@ func (c *Client) handleMoveAndRotationPacket(p *pk.Packet) error {
 		flags      pk.Byte
 		TpID       pk.VarInt
 	)
-	if err := ScanFields(p, &x, &y, &z, &yaw, &pitch, &flags, &TpID); err != nil {
+	if err := p.Scan(&x, &y, &z, &yaw, &pitch, &flags, &TpID); err != nil {
 		return err
 	}
 	c.SendPacket(pk.Marshal(
@@ -350,7 +279,7 @@ func (c *Client) handleSpawnPlayerPacket(p *pk.Packet) error {
 		eUUID   pk.UUID
 		x, y, z pk.Double
 	)
-	if err := ScanFields(p, &eID, &eUUID, &x, &y, &z); err != nil {
+	if err := p.Scan(&eID, &eUUID, &x, &y, &z); err != nil {
 		return err
 	}
 	newEntity := new(BaseEntity)
@@ -373,7 +302,7 @@ func (c *Client) handleSpawnMobPacket(p *pk.Packet) error {
 		eType   pk.VarInt
 		x, y, z pk.Double
 	)
-	if err := ScanFields(p, &eID, &eUUID, &eType, &x, &y, &z); err != nil {
+	if err := p.Scan(&eID, &eUUID, &eType, &x, &y, &z); err != nil {
 		return err
 	}
 	newEntity := new(BaseEntity)
@@ -394,7 +323,7 @@ func (c *Client) handleEntityLocationUpdatePacket(p *pk.Packet) error {
 		eID     pk.VarInt
 		x, y, z pk.Short
 	)
-	if err := ScanFields(p, &eID, &x, &y, &z); err != nil {
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
 		return err
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
@@ -414,7 +343,7 @@ func (c *Client) handleEntityTeLePortPacket(p *pk.Packet) error {
 		eID     pk.VarInt
 		x, y, z pk.Double
 	)
-	if err := ScanFields(p, &eID, &x, &y, &z); err != nil {
+	if err := p.Scan(&eID, &x, &y, &z); err != nil {
 		return err
 	}
 	if element, ok := c.EntityList.hashMap.Get(int32(eID)); ok {
@@ -450,12 +379,9 @@ func (c *Client) handleUnlockChunk(p *pk.Packet) error {
 		return nil
 	}
 	var cX, cZ pk.Int
-	err := ScanFields(p, &cX, &cZ)
-	if err == nil {
+	if p.Scan(&cX, &cZ) == nil {
 		c.World.ChunkMapLock.Lock()
-		if _, ok := c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cZ)}]; ok {
-			c.World.Chunks[world.ChunkLoc{X: int(cX), Z: int(cZ)}] = nil
-		}
+		delete(c.World.Chunks, world.ChunkLoc{X: int(cX), Z: int(cZ)})
 		c.World.ChunkMapLock.Unlock()
 	}
 	return nil
@@ -472,14 +398,16 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 		Biomes         = biomesData{fullChunk: (*bool)(&FullChunk)}
 		Data           chunkData
 	)
-	if err := ScanFields(p, &X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
+	if err := p.Scan(&X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
 		return err
 	}
 	chunk, err := world.DecodeChunkColumn(int32(PrimaryBitMask), Data)
 	if err != nil {
 		return fmt.Errorf("decode chunk column fail: %w", err)
 	}
-	c.World.LoadChunk(int(X), int(Z), chunk)
+	c.World.ChunkMapLock.Lock()
+	c.World.Chunks[world.ChunkLoc{X: int(X), Z: int(Z)}] = chunk
+	c.World.ChunkMapLock.Unlock()
 	return nil
 }
 
@@ -513,17 +441,5 @@ func (c *chunkData) Decode(r pk.DecodeReader) error {
 	if _, err := r.Read(*c); err != nil {
 		return err
 	}
-	return nil
-}
-func ScanFields(p *pk.Packet, fields ...pk.FieldDecoder) error {
-	r := bytes.NewReader(p.Data)
-	for _, v := range fields {
-		err := v.Decode(r)
-		if err != nil {
-			r = nil
-			return err
-		}
-	}
-	r = nil
 	return nil
 }
