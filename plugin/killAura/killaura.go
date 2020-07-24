@@ -85,11 +85,11 @@ func (p *Killaura) attack() {
 	}
 }
 func (p *Killaura) getAttackList() []int32 {
-	result := make([]int32, 1)
+	result := []int32{}
 	list := p.c.EntityList.GetAllEntities()
 	for i := 0; i < len(list); i++ {
 		if p.checkType(list[i]) {
-			if list[i].GetSquaredDistanceToClient(p.c) < 36 {
+			if list[i].GetSquaredDistanceToClient(p.c) < 25 {
 				result = append(result, list[i].GetID())
 				if len(result) >= p.maxTarget {
 					return result
