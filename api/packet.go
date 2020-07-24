@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
@@ -58,9 +59,25 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleUnlockChunk(p)
 	case data.UpdateHealth:
 		return c.handleHealthChangePacket(p)
+	case data.PlayerAbilitiesClientbound:
+		return c.handlePlayerAbilitiesPacket(p)
 	default:
 		return nil
 	}
+}
+func (c *Client) handlePlayerAbilitiesPacket(p *pk.Packet) error {
+	c.Native.SendPacket(
+		pk.Marshal(
+			data.ClientSettings,
+			pk.String(c.settings.Locale),
+			pk.Byte(c.settings.ViewDistance),
+			pk.VarInt(c.settings.ChatMode),
+			pk.Boolean(c.settings.ChatColors),
+			pk.UnsignedByte(c.settings.DisplayedSkinParts),
+			pk.VarInt(c.settings.MainHand),
+		),
+	)
+	return nil
 }
 func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 	if len(c.Event.dieHandlers) < 1 { // 如果沒有任何handler的話就跳過解析

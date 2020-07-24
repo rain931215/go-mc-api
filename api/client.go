@@ -3,13 +3,14 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/Tnze/go-mc/bot"
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
 	pk "github.com/Tnze/go-mc/net/packet"
 	"github.com/rain931215/go-mc-api/api/world"
-	"net"
-	"time"
 )
 
 //const bufferPacketChannelSize int = 100
@@ -17,6 +18,7 @@ import (
 // 改寫的客戶端結構
 type Client struct {
 	Native     *bot.Client
+	settings   bot.Settings
 	World      *world.World
 	Inventory  *inventory
 	Auth       *AuthInfo
@@ -35,6 +37,7 @@ type AuthInfo struct {
 // 生成新的客戶端
 func NewClient() (client *Client) {
 	client = new(Client)
+	client.settings = bot.DefaultSettings
 	client.Native = bot.NewClient()
 	client.World = &world.World{Chunks: make(map[world.ChunkLoc]*world.Chunk)}
 	client.Inventory = NewInventory()
@@ -78,8 +81,8 @@ func NewClient() (client *Client) {
 			} else {
 				_ = client.handlePacket(v)
 			}
-			if diff := time.Now().UnixNano() - currentTime; diff > 30000000 { // 大於30ms就輸出時間
-				fmt.Println(fmt.Sprintf("封包超過正常時間:%v.%v毫秒", diff/1000000, diff%1000000))
+			if diff := time.Now().UnixNano() - currentTime; diff > 5000000 { // 大於30ms就輸出時間 5ms
+				fmt.Println(fmt.Sprintf("封包超過正常時間:%v.%v毫秒", diff/1000000, diff%1000000), v.ID)
 			}
 		}
 	}(client.packetInStream)
