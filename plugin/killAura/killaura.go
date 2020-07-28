@@ -78,7 +78,7 @@ func (p *Killaura) onTimeUpdate(age, timeOfDay int64) bool {
 func (p *Killaura) attack() {
 	list := p.getAttackList()
 	for i := 0; i < len(list); i++ {
-		p.c.AttackEntity(list[i])
+		p.c.AttackEntity(list[i], false)
 	}
 }
 func (p *Killaura) getAttackList() []int32 {
