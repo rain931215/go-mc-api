@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/Tnze/go-mc/bot/world/entity"
 	"github.com/Tnze/go-mc/chat"
 	"github.com/Tnze/go-mc/data"
@@ -40,6 +41,10 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleMoveAndRotationPacket(p)
 	case data.ChunkData:
 		return c.handleLoadChunkPacket(p)
+	case data.OpenWindow:
+		return c.handleOpenWindow(p)
+	case data.WindowConfirmationClientbound:
+		return c.handleWindowConfirmation(p)
 	case data.SetSlot:
 		return c.handleSetSlotPacket(p)
 	case data.TimeUpdate:
@@ -61,6 +66,40 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 	default:
 		return nil
 	}
+}
+func (c *Client) handleOpenWindow(p *pk.Packet) error {
+	var (
+		WindowID    pk.VarInt
+		WindowType  pk.VarInt
+		WindowTitle pk.Chat
+	)
+	p.Scan(&WindowID, &WindowType, &WindowTitle)
+	for i := 0; i < len(c.Event.openWindowHandlers); i++ {
+		v := c.Event.openWindowHandlers[i]
+		if v == nil {
+			continue
+		}
+		if v(int(WindowID), int(WindowType), string(WindowTitle)) {
+			c.Event.openWindowHandlers = append(c.Event.openWindowHandlers[:i], c.Event.openWindowHandlers[i+1:]...)
+			i--
+		}
+	}
+	return nil
+}
+func (c *Client) handleWindowConfirmation(p *pk.Packet) error {
+	var (
+		WindowID     pk.Byte
+		ActionNumber pk.Short
+		Accepted     pk.Boolean
+	)
+	p.Scan(&WindowID, &ActionNumber, &Accepted)
+	c.SendPacket(pk.Marshal(
+		data.ConfirmTransactionServerbound,
+		pk.Byte(WindowID),
+		pk.Short(ActionNumber),
+		pk.Boolean(true),
+	))
+	return nil
 }
 func (c *Client) handleHealthChangePacket(p *pk.Packet) error {
 	if len(c.Event.dieHandlers) < 1 { // 如果沒有任何handler的話就跳過解析
