@@ -7,8 +7,8 @@ import (
 
 /*
 	Usage
-	killaura := killaura.New(c, 600, 5)
-	killaura.EntityType = []int32{23, 84, 87, 88, 90} //raid's mobs
+	killaura := killaura.New(c, 300, 10)
+	killaura.EntityType = []int32{61, 95, 91, 22, 93}
 	killaura.Start()
 
 */
@@ -80,9 +80,14 @@ func (p *Killaura) attack() {
 	for i := 0; i < len(list); i++ {
 		p.c.AttackEntity(list[i], false)
 	}
+	/*
+		if len(list) > 0 {
+			p.c.SwingArm(0)
+		}
+	*/
 }
 func (p *Killaura) getAttackList() []int32 {
-	result := make([]int32, 1)
+	result := []int32{}
 	list := p.c.EntityList.GetAllEntities()
 	for i := 0; i < len(list); i++ {
 		if p.checkType(list[i]) {
