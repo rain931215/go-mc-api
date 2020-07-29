@@ -128,7 +128,7 @@ func (c *Client) ClickWindow(id uint8, slot int16, button int8, mode int32) {
 		pk.UnsignedByte(id),
 		pk.Short(slot),
 		pk.Byte(button),
-		pk.Short(0),
+		pk.Short(1),
 		pk.VarInt(mode),
 		pk.Byte(0),
 	))
