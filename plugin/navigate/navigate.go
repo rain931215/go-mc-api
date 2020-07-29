@@ -10,6 +10,11 @@ import (
 	"github.com/rain931215/go-mc-api/plugin/mcfalloutcmd"
 )
 
+/*  usage
+cmdHandler := mcfalloutcmd.New(c)
+_ = navigate.New(cmdHandler)
+*/
+
 //Navigate _
 type Navigate struct {
 	c *api.Client
