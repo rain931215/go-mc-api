@@ -8,6 +8,8 @@ import (
 )
 
 func main() {
+	err := ioutil.WriteFile("viperTest.json", nil, 0644)
+	checkerr(err)
 
 	n := nbt.NewCompoundTag("test")
 	/*
