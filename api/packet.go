@@ -94,15 +94,17 @@ func (c *Client) handleWindowConfirmation(p *pk.Packet) error {
 		ActionNumber pk.Short
 		Accepted     pk.Boolean
 	)
-	p.Scan(&WindowID, &ActionNumber, &Accepted)
+	_ = p.Scan(&WindowID, &ActionNumber, &Accepted)
 	c.SendPacket(pk.Marshal(
 		data.ConfirmTransactionServerbound,
-		pk.Byte(WindowID),
-		pk.Short(ActionNumber),
+		WindowID,
+		ActionNumber,
 		pk.Boolean(true),
 	))
+	return nil
+}
 func (c *Client) handlePlayerAbilitiesPacket(p *pk.Packet) error {
-	c.Native.SendPacket(
+	_ = c.Native.SendPacket(
 		pk.Marshal(
 			data.ClientSettings,
 			pk.String(c.settings.Locale),

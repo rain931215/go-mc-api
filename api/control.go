@@ -16,16 +16,12 @@ func (c *Client) Chat(msg string) {
 	c.SendPacket(pk.Marshal(data.ChatMessageServerbound, pk.String(msg)))
 }
 func (c *Client) ToggleFly(enable bool) {
-	b := pk.Byte(4)
+
 	if enable {
-		b = pk.Byte(2)
+		c.SendPacket(pk.Marshal(data.PlayerAbilitiesServerbound, pk.Byte(2)))
+	} else {
+		c.SendPacket(pk.Marshal(data.PlayerAbilitiesServerbound, pk.Byte(0)))
 	}
-	c.SendPacket(pk.Marshal(
-		data.PlayerAbilitiesServerbound,
-		b,
-		pk.Float(1),
-		pk.Float(1),
-	))
 }
 func (c *Client) Move(x, y, z float64, onGround bool) {
 	c.SetX(x)
