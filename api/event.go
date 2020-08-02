@@ -10,6 +10,7 @@ import (
 type Events struct {
 	blockChangeHandlers []func(x, y, z int, id world.BlockStatus) bool
 	packetHandlers      []func(p *pk.Packet) bool
+	openWindowHandlers  []func(windowID, windowType int, windowTitle string) bool
 	setSlotHandlers     []func(id int8, slot int16, data entity.Slot) bool
 	chatHandlers        []func(msg chat.Message) bool
 	disconnectHandlers  []func(msg chat.Message) bool
@@ -24,6 +25,9 @@ func (e *Events) AddEventHandler(handler interface{}, handlerType string) {
 		break
 	case func(age, timeOfDay int64) bool:
 		e.timeUpdateHandlers = append(e.timeUpdateHandlers, handler.(func(age, timeOfDay int64) bool))
+		break
+	case func(windowID, windowType int, windowTitle string) bool:
+		e.openWindowHandlers = append(e.openWindowHandlers, handler.(func(windowID, windowType int, windowTitle string) bool))
 		break
 	case func(id int8, slot int16, data entity.Slot) bool:
 		e.setSlotHandlers = append(e.setSlotHandlers, handler.(func(id int8, slot int16, data entity.Slot) bool))

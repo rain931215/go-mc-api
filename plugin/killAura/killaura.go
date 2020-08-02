@@ -7,8 +7,8 @@ import (
 
 /*
 	Usage
-	killaura := killaura.New(c, 600, 5)
-	killaura.EntityType = []int32{23, 84, 87, 88, 90} //raid's mobs
+	killaura := killaura.New(c, 300, 10)
+	killaura.EntityType = []int32{61, 95, 91, 22, 93}
 	killaura.Start()
 
 */
@@ -78,8 +78,13 @@ func (p *Killaura) onTimeUpdate(age, timeOfDay int64) bool {
 func (p *Killaura) attack() {
 	list := p.getAttackList()
 	for i := 0; i < len(list); i++ {
-		p.c.AttackEntity(list[i])
+		p.c.AttackEntity(list[i], false)
 	}
+	/*
+		if len(list) > 0 {
+			p.c.SwingArm(0)
+		}
+	*/
 	if len(list) > 0 {
 		p.c.SwingArm(api.MainHand)
 	}

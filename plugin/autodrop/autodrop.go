@@ -7,7 +7,7 @@ import (
 
 /* Usage
 autodrop := autodrop.New(c)
-whiteList := []int32{836} //836為不死圖騰
+whiteList := []int32{903} //903為不死圖騰
 for i := 9; i < 36; i++ {
 	autodrop.OpenSlot[i] = true
 	autodrop.SetWhiteListBySlot(int16(i), whiteList)

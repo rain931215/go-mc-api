@@ -2,12 +2,10 @@ package navigate
 
 import (
 	"math"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/rain931215/go-mc-api/api"
-	"github.com/rain931215/go-mc-api/plugin/mcfalloutcmd"
 )
 
 //Navigate _
@@ -16,36 +14,9 @@ type Navigate struct {
 }
 
 //New _
-func New(cmdHandler *mcfalloutcmd.McfalloutCmd) *Navigate {
+func New(c *api.Client) *Navigate {
 	p := new(Navigate)
-	p.c = cmdHandler.Client
-	cmdHandler.AddCmd("move", func(c *api.Client, sender string, text string, args []string) {
-		if len(args) != 3 {
-			return
-		}
-		x, err := strconv.ParseFloat(args[0], 64)
-		y, err := strconv.ParseFloat(args[1], 64)
-		z, err := strconv.ParseFloat(args[2], 64)
-		if err != nil {
-			return
-		}
-		p.Move(x, y, z)
-	})
-
-	cmdHandler.AddCmd("moveto", func(c *api.Client, sender string, text string, args []string) {
-		if len(args) != 3 {
-			return
-		}
-		x, err := strconv.ParseFloat(args[0], 64)
-		y, err := strconv.ParseFloat(args[1], 64)
-		z, err := strconv.ParseFloat(args[2], 64)
-		if err != nil {
-			return
-		}
-		go func() {
-			p.MoveTo(x, y, z)
-		}()
-	})
+	p.c = c
 	return p
 }
 

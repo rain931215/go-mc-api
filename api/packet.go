@@ -41,13 +41,17 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return c.handleMoveAndRotationPacket(p)
 	case data.ChunkData:
 		return c.handleLoadChunkPacket(p)
+	case data.OpenWindow:
+		return c.handleOpenWindow(p)
+	case data.WindowConfirmationClientbound:
+		return c.handleWindowConfirmation(p)
 	case data.SetSlot:
 		return c.handleSetSlotPacket(p)
 	case data.TimeUpdate:
 		return c.handleTimeUpdatePacket(p)
 	case data.SpawnPlayer:
 		return c.handleSpawnPlayerPacket(p)
-	case data.SpawnMob:
+	case data.SpawnLivingEntity:
 		return c.handleSpawnMobPacket(p)
 	case data.EntityRelativeMove, data.EntityLookAndRelativeMove:
 		return c.handleEntityLocationUpdatePacket(p)
@@ -65,6 +69,38 @@ func (c *Client) handlePacket(p *pk.Packet) error {
 		return nil
 	}
 }
+func (c *Client) handleOpenWindow(p *pk.Packet) error {
+	var (
+		WindowID    pk.VarInt
+		WindowType  pk.VarInt
+		WindowTitle pk.Chat
+	)
+	p.Scan(&WindowID, &WindowType, &WindowTitle)
+	for i := 0; i < len(c.Event.openWindowHandlers); i++ {
+		v := c.Event.openWindowHandlers[i]
+		if v == nil {
+			continue
+		}
+		if v(int(WindowID), int(WindowType), string(WindowTitle)) {
+			c.Event.openWindowHandlers = append(c.Event.openWindowHandlers[:i], c.Event.openWindowHandlers[i+1:]...)
+			i--
+		}
+	}
+	return nil
+}
+func (c *Client) handleWindowConfirmation(p *pk.Packet) error {
+	var (
+		WindowID     pk.Byte
+		ActionNumber pk.Short
+		Accepted     pk.Boolean
+	)
+	p.Scan(&WindowID, &ActionNumber, &Accepted)
+	c.SendPacket(pk.Marshal(
+		data.ConfirmTransactionServerbound,
+		pk.Byte(WindowID),
+		pk.Short(ActionNumber),
+		pk.Boolean(true),
+	))
 func (c *Client) handlePlayerAbilitiesPacket(p *pk.Packet) error {
 	c.Native.SendPacket(
 		pk.Marshal(
@@ -410,12 +446,13 @@ func (c *Client) handleLoadChunkPacket(p *pk.Packet) error {
 	var (
 		X, Z           pk.Int
 		FullChunk      pk.Boolean
+		IgnoreOldData  pk.Boolean
 		PrimaryBitMask pk.VarInt
 		Heightmaps     struct{}
 		Biomes         = biomesData{fullChunk: (*bool)(&FullChunk)}
 		Data           chunkData
 	)
-	if err := p.Scan(&X, &Z, &FullChunk, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
+	if err := p.Scan(&X, &Z, &FullChunk, &IgnoreOldData, &PrimaryBitMask, pk.NBT{V: &Heightmaps}, &Biomes, &Data); err != nil {
 		return err
 	}
 	chunk, err := world.DecodeChunkColumn(int32(PrimaryBitMask), Data)
