@@ -1,16 +1,16 @@
 package autobuilder
 
 type template struct {
-	region []region
+	Region []region
 }
 
 type region struct {
-	blockStatePalette blockStatePalette
+	BlockStatePalette blockStatePalette
 	BlockStates       []int64
 }
 
 type blockStatePalette struct {
-	blocks []block
+	Blocks []block
 }
 
 type block struct {
