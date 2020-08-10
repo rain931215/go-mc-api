@@ -8,11 +8,50 @@ import (
 
 	nbt2Json "github.com/Lirsty/nbt2json"
 	nbtTool "github.com/rain931215/go-mc-api/nbt"
+	t "github.com/rain931215/go-mc-api/plugin/autobuilder"
 )
 
 func main() {
 	//readGzip("TreeFarm_by_Ian0822.litematic")
-	bigTest()
+	writeLitematic()
+}
+
+func writeLitematic() {
+	l := t.NewLitematic()
+	l.Metadata.Auther = "Lirsty"
+	l.Metadata.Description = "none"
+	l.Metadata.EnclosingSize.X = 1
+	l.Metadata.EnclosingSize.Y = 2
+	l.Metadata.EnclosingSize.Z = 3
+	l.Metadata.Name = "test"
+	l.Metadata.RegionCount = 2
+	l.Metadata.TimeCreated = 123456789
+	l.Metadata.TimeModified = 12345678910
+	l.Metadata.TotalBlocks = 101
+	l.Metadata.TotalVolume = 1011
+
+	l.Regions.Regions = make(map[string]t.Region)
+	r := new(t.Region)
+	r.Position.X = 1
+	r.Position.Y = 12
+	r.Position.Z = 123
+	r.Size.X = 321
+	r.Size.Y = 32
+	r.Size.Z = 3
+	air := new(t.Blocktype)
+	air.Properties = make(map[string]string)
+	air.Name = "air"
+	air.Properties["AirTest"] = "Hello"
+	air.Properties["AirTest2"] = "Hello"
+	dirt := new(t.Blocktype)
+	dirt.Properties = make(map[string]string)
+	dirt.Name = "dirt"
+	dirt.Properties["DirtTest"] = "Hello"
+	r.BlockStatePalette.Blocks = []t.Blocktype{*air, *dirt}
+	r.BlockStates = []int64{123, 123456, 12345678}
+	l.Regions.Regions["region01"] = *r
+	l.Regions.Regions["region02"] = *r
+	l.WriteFile("test.nbt")
 }
 
 func bigTest() {
