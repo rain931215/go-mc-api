@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 
 	nbt2Json "github.com/Lirsty/nbt2json"
-	nbtTool "github.com/rain931215/go-mc-api/plugin/autobuilder/nbt"
+	nbtTool "github.com/rain931215/go-mc-api/nbt"
 )
 
 func main() {
