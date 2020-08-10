@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	nbt2Json "github.com/midnightfreddie/nbt2json"
+	nbt2Json "github.com/Lirsty/nbt2json"
 	nbtTool "github.com/rain931215/go-mc-api/plugin/autobuilder/nbt"
 )
 
