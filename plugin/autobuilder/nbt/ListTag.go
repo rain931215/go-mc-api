@@ -28,10 +28,11 @@ func (tag *ListTag) toJSON() map[string]interface{} {
 	result := make(map[string]interface{})
 	list := make([]interface{}, 0)
 	for i := 0; i < len(tag.Values); i++ {
-		if tag.Values[i].getType() != tag.TagType {
+		t, v := tag.Values[i].getType()
+		if t != tag.TagType {
 			panic(errors.New("Wrong Type in TagList"))
 		}
-		list = append(list, tag.Values[i].Value)
+		list = append(list, v)
 	}
 	if len(list) > 0 {
 		result["tagListType"] = tag.TagType

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io/ioutil"
 
@@ -9,8 +11,13 @@ import (
 )
 
 func main() {
-	nbt2Json.UseJavaEncoding()
+	//readGzip("TreeFarm_by_Ian0822.litematic")
+	bigTest()
+}
 
+func bigTest() {
+	nbt2Json.UseJavaEncoding()
+	//nbt2Json.UseLongAsString()
 	nbt := nbtTool.NewNbt()
 	Level := nbtTool.NewCompoundTag("Level")
 	nbt.AddCompoundTag(Level)
@@ -59,6 +66,8 @@ func main() {
 	}
 	Level.AddNewValue(`byteArrayTest (the first 1000 values of (n*n*255+n*7)%100, starting with n=0 (0, 62, 34, 16, 8, ...))`, bytes)
 	Level.AddNewValue("shortTest", int16(32767))
+	int64s := []int64{9223372036854775807, 15151515}
+	Level.AddNewValue("LongArrayTest", int64s)
 
 	data, err := nbt.ToJson()
 	checkerr(err)
@@ -66,6 +75,7 @@ func main() {
 
 	out, err := nbt2Json.Json2Nbt(data)
 	checkerr(err)
+	fmt.Println(out)
 	err = ioutil.WriteFile("test.nbt", out, 0622)
 	checkerr(err)
 
@@ -75,7 +85,17 @@ func main() {
 	data, err = nbt2Json.Nbt2Json(read, "bigtest")
 	checkerr(err)
 	fmt.Println(string(data))
-
+}
+func readGzip(file string) {
+	nbt2Json.UseJavaEncoding()
+	read, err := ioutil.ReadFile(file)
+	checkerr(err)
+	rdata := bytes.NewReader(read)
+	r, _ := gzip.NewReader(rdata)
+	s, _ := ioutil.ReadAll(r)
+	data, err := nbt2Json.Nbt2Json(s, "test")
+	checkerr(err)
+	fmt.Println(string(data))
 }
 
 func checkerr(err error) {

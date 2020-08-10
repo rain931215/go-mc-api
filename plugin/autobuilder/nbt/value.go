@@ -33,49 +33,44 @@ func NewValue(name string, value interface{}) *Value {
 	return v
 }
 
-func (v *Value) getType() int {
+func (v *Value) getType() (int, interface{}) {
 	switch k := v.Value.(type) {
 	case byte:
-		return 1
+		return 1, v.Value
 	case int16:
-		return 2
+		return 2, v.Value
 	case int32:
-		return 3
+		return 3, v.Value
 	case int64:
 		s := strconv.FormatInt(k, 10)
-		v.Value = s
-		return 4
+		return 4, s
 	case float32:
-		return 5
+		return 5, v.Value
 	case float64:
-		return 6
+		return 6, v.Value
 	case []byte:
 		num := []int{}
 		for i := 0; i < len(k); i++ {
 			num = append(num, int(k[i]))
 		}
-		v.Value = num
-		return 7
+		return 7, num
 	case string:
-		return 8
+		return 8, v.Value
 	case *ListTag:
-		v.Value = k.toJSON()
-		return 9
+		return 9, k.toJSON()
 	case *CompoundTag:
-		v.Value = k.toJSON()
-		return 10
+		return 10, k.toJSON()
 	case []int:
-		return 11
+		return 11, v.Value
 	case []int64:
 		strs := []string{}
 		for i := 0; i < len(k); i++ {
 			s := strconv.FormatInt(k[i], 10)
 			strs = append(strs, s)
 		}
-		v.Value = strs
-		return 12
+		return 12, strs
 	default:
 		fmt.Println("Unknown Type")
 	}
-	return 0
+	return 0, nil
 }

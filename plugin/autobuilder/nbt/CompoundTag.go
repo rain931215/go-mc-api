@@ -29,9 +29,10 @@ func (tag *CompoundTag) toJSON() []interface{} {
 	var result []interface{}
 	for i := 0; i < len(tag.Values); i++ {
 		newMap := make(map[string]interface{})
-		newMap["tagType"] = tag.Values[i].getType()
+		t, value := tag.Values[i].getType()
+		newMap["tagType"] = t
 		newMap["name"] = tag.Values[i].Name
-		newMap["value"] = tag.Values[i].Value
+		newMap["value"] = value
 		result = append(result, newMap)
 	}
 	return result

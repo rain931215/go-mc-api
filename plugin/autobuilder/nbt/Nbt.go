@@ -43,9 +43,10 @@ func (nbt *nbt) writeValue(v interface{}) {
 	switch v := v.(type) {
 	case *Value:
 		newMap := make(map[string]interface{})
-		newMap["tagType"] = v.getType()
+		t, value := v.getType()
+		newMap["tagType"] = t
 		newMap["name"] = v.Name
-		newMap["value"] = v.Value
+		newMap["value"] = value
 		nbt.Nbt = append(nbt.Nbt, newMap)
 		break
 	case *CompoundTag:
